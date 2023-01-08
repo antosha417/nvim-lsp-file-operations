@@ -32,7 +32,7 @@ require("lsp-file-operations").setup {
 ```
 
 ## Features
-Currently only `workspace/WillRename`
+Currently only [workspace/WillRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles) operation is supported. If you have usecases for any other please open an issue.
 
 ## Contributing
 PRs are always welcome.
