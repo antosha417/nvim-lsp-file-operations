@@ -5,6 +5,18 @@ support](https://neovim.io/doc/user/lsp.html).
 This plugin works by subscribing to events emitted by [nvim-tree](https://github.com/nvim-tree/nvim-tree.lua).
 But other integrations are possible.
 
+
+## Features
+* [workspace/WillRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles)
+
+WillRename requests supported in couple lsp-servers and allows to automagically apply some refactorings while you moving files around. Currently tested with [metals](https://scalameta.org/metals/) and [rust-analyzer](https://rust-analyzer.github.io/).
+
+
+https://user-images.githubusercontent.com/14187674/211327507-39f21a74-0a43-43f0-ba3e-91109125286c.mp4
+
+
+**If you have usecases for any other operations please open an issue.**
+
 ## Installation
 Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
@@ -30,9 +42,6 @@ require("lsp-file-operations").setup {
   debug = false
 }
 ```
-
-## Features
-Currently only [workspace/WillRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles) operation is supported. If you have usecases for any other please open an issue.
 
 ## Contributing
 PRs are always welcome.
