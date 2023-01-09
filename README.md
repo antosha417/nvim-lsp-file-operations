@@ -24,7 +24,6 @@ Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 use {
   'antosh417/nvim-lsp-file-operations',
   requires = {
-    { "davidm/lua-glob-pattern" },
     { "nvim-lua/plenary.nvim" },
     { "kyazdani42/nvim-tree.lua" },
   }

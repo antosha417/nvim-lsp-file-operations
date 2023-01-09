@@ -1,5 +1,4 @@
 local Path = require("plenary").Path
-local globtopattern = require("globtopattern").globtopattern
 
 local log = require("lsp-file-operations.log")
 
@@ -31,19 +30,29 @@ local get_absolute_path = function(name)
   return absolute_path, is_dir
 end
 
+local get_regex = function (pattern)
+    local regex = vim.fn.glob2regpat(pattern.glob)
+    if pattern.options and pattern.options.ignorecase then
+      return "\\c" .. regex
+    end
+    return regex
+end
+
 -- filter: FileOperationFilter
 local match_filter = function(filter, name, is_dir)
-  -- TODO what is filter.scheme?
-  -- TODO should also match pattern.options?
   local pattern = filter.pattern
   local match_type = pattern.matches
   if not match_type or
       (match_type == "folder" and is_dir) or
       (match_type == "file" and not is_dir)
   then
-    local regex = globtopattern(pattern.glob)
+    local regex = get_regex(pattern)
     log.debug("Matching name", name, "to pattern", regex)
-    return name:match(regex)
+    local previous_ignorecase = vim.o.ignorecase
+    vim.o.ignorecase = false
+    local matched = vim.fn.match(name, regex) ~= -1
+    vim.o.ignorecase = previous_ignorecase
+    return matched
   end
 
   return false
