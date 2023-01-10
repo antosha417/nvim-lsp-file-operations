@@ -22,7 +22,7 @@ Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
 ```lua
 use {
-  'antosh417/nvim-lsp-file-operations',
+  'antosha417/nvim-lsp-file-operations',
   requires = {
     { "nvim-lua/plenary.nvim" },
     { "kyazdani42/nvim-tree.lua" },
