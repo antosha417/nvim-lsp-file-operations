@@ -8,7 +8,7 @@ local default_config = {
 }
 
 M.setup = function(opts)
-  opts = vim.tbl_deep_extend("force", default_config, opts)
+  opts = vim.tbl_deep_extend("force", default_config, opts or {})
   if opts.debug then
     log.level = "debug"
   end
