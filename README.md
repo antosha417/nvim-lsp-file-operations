@@ -9,7 +9,7 @@ But other integrations are possible.
 ## Features
 * [workspace/WillRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles)
 
-WillRename requests supported in couple lsp-servers and allows to automagically apply some refactorings while you moving files around. Currently tested with [metals](https://scalameta.org/metals/) and [rust-analyzer](https://rust-analyzer.github.io/).
+WillRename requests supported in couple lsp-servers and allows to automagically apply some refactorings while you moving files around. Currently tested with [metals](https://scalameta.org/metals/), [rust-analyzer](https://rust-analyzer.github.io/) and [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server)
 
 
 https://user-images.githubusercontent.com/14187674/211327507-39f21a74-0a43-43f0-ba3e-91109125286c.mp4
