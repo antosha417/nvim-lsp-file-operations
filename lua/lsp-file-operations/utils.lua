@@ -1,4 +1,4 @@
-local Path = require("plenary").Path
+local Path = require("plenary").path
 
 local log = require("lsp-file-operations.log")
 
