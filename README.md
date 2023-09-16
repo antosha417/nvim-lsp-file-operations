@@ -55,6 +55,8 @@ This is equivalent to:
 require("lsp-file-operations").setup {
   -- used to see debug logs in file `vim.fn.stdpath("cache") .. lsp-file-operations.log`
   debug = false
+  -- used to instruct the lsp to update all the files contained in a moved or renamed directory.
+  recursive_rename = false
 }
 ```
 
