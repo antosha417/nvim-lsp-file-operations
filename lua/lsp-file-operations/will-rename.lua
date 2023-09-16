@@ -43,7 +43,7 @@ M.callback = function(opts, data)
           table.insert(files, { old_name = value, new_name = value:gsub(data.old_name, data.new_name) })
          end
       else
-        -- Not performing the recursive scan, lest just process the single file  
+        -- Not performing the recursive scan, lets just process the single file  
         table.insert(files, { old_name = data.old_name, new_name = data.new_name })
       end
 
