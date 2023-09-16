@@ -29,6 +29,7 @@ local get_absolute_path = function(name)
   local absolute_path = ensure_dir_trailing_slash(path:absolute(), is_dir)
   return absolute_path, is_dir
 end
+M.get_absolute_path = get_absolute_path
 
 local get_regex = function (pattern)
     local regex = vim.fn.glob2regpat(pattern.glob)

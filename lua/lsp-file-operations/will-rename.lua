@@ -1,5 +1,6 @@
 local utils = require("lsp-file-operations.utils")
 local log = require("lsp-file-operations.log")
+local scandir = require("plenary.scandir")
 
 local M = {}
 
@@ -20,17 +21,40 @@ local function getWorkspaceEdit(client, old_name, new_name)
   return resp.result
 end
 
-M.callback = function(data)
+M.callback = function(opts, data)
   for _, client in pairs(vim.lsp.get_active_clients()) do
     local will_rename = utils.get_nested_path(client,
       { "server_capabilities", "workspace", "fileOperations", "willRename" })
     if will_rename ~= nil then
       local filters = will_rename.filters or {}
-      if utils.matches_filters(filters, data.old_name) then
-        local edit = getWorkspaceEdit(client, data.old_name, data.new_name)
-        if edit ~= nil then
-          log.debug("going to apply workspace edit", edit)
-          vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
+      local do_recursive_rename = false
+      local files = {}
+
+      if opts.recursive_rename then
+        -- We have recursive rename enabled, lets check if the file is a directory
+        local _, is_dir = utils.get_absolute_path(data.old_name)
+        -- We perform the recursive rename only if is a directory
+        do_recursive_rename = is_dir
+      end
+
+      if do_recursive_rename then
+        -- We have to perfrom the recursive rename, lets scan the received directory  
+        for _, value in ipairs(scandir.scan_dir(data.old_name)) do
+          table.insert(files, { old_name = value, new_name = value:gsub(data.old_name, data.new_name) })
+         end
+      else
+        -- Not performing the recursive scan, lest just process the single file  
+        table.insert(files, { old_name = data.old_name, new_name = data.new_name })
+      end
+
+      -- Iterate over the files and apply the workspace edit
+      for _, file in ipairs(files) do
+        if utils.matches_filters(filters, file.old_name) then
+          local edit = getWorkspaceEdit(client, file.old_name, file.new_name)
+          if edit ~= nil then
+            log.debug("going to apply workspace edit", edit)
+            vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
+          end
         end
       end
     end

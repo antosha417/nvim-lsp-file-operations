@@ -4,7 +4,8 @@ local will_rename = require('lsp-file-operations.will-rename')
 local log = require('lsp-file-operations.log')
 
 local default_config = {
-  debug = false
+  debug = false,
+  recurisive_rename = false,
 }
 
 M.setup = function(opts)
@@ -17,7 +18,9 @@ M.setup = function(opts)
   local ok_nvim_tree, nvim_tree_api = pcall(require, 'nvim-tree.api')
   if ok_nvim_tree then
     log.debug("Setting up nvim-tree integration")
-    nvim_tree_api.events.subscribe(nvim_tree_api.events.Event.WillRenameNode, will_rename.callback)
+    nvim_tree_api.events.subscribe(nvim_tree_api.events.Event.WillRenameNode, function(data)
+        will_rename.callback(opts, data)
+    end)
   end
 
   -- neo-tree integration
@@ -32,7 +35,7 @@ M.setup = function(opts)
         new_name = args.destination
       }
       log.debug("LSP rename data", vim.inspect(data))
-      will_rename.callback(data)
+      will_rename.callback(opts, data)
     end
 
     -- just in case setup is called multiple times
