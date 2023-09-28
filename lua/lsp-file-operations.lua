@@ -4,12 +4,13 @@ local will_rename = require('lsp-file-operations.will-rename')
 local log = require('lsp-file-operations.log')
 
 local default_config = {
-  debug = false
+  debug = false,
+  timeout_ms = 10000,
 }
 
 M.setup = function(opts)
-  opts = vim.tbl_deep_extend("force", default_config, opts or {})
-  if opts.debug then
+  M.config = vim.tbl_deep_extend("force", default_config, opts or {})
+  if M.config.debug then
     log.level = "debug"
   end
 
