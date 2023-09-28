@@ -5,7 +5,7 @@ local log = require('lsp-file-operations.log')
 
 local default_config = {
   debug = false,
-  timeout = 10000,
+  timeout_ms = 10000,
 }
 
 M.setup = function(opts)

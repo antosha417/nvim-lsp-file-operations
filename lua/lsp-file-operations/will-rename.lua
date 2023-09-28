@@ -14,9 +14,8 @@ local function getWorkspaceEdit(client, old_name, new_name)
     }
   }
   log.debug("Sending workspace/willRenameFiles request", will_rename_params)
-  -- TODO get timeout from config
-  local timeout = require("lsp-file-operations").config.timeout
-  local success, resp = pcall(client.request_sync, "workspace/willRenameFiles", will_rename_params, timeout)
+  local timeout_ms = require("lsp-file-operations").config.timeout_ms
+  local success, resp = pcall(client.request_sync, "workspace/willRenameFiles", will_rename_params, timeout_ms)
   log.debug("Got workspace/willRenameFiles response", resp)
   if not success then
     log.error("Error while sending workspace/willRenameFiles request", resp)

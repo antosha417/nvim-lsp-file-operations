@@ -55,8 +55,8 @@ This is equivalent to:
 require("lsp-file-operations").setup {
   -- used to see debug logs in file `vim.fn.stdpath("cache") .. lsp-file-operations.log`
   debug = false,
-  -- how long to wait for file rename information before cancelling
-  timeout = 10000,
+  -- how long to wait (in milliseconds) for file rename information before cancelling
+  timeout_ms = 10000,
 }
 ```
 
