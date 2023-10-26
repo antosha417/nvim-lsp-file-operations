@@ -18,9 +18,9 @@ https://user-images.githubusercontent.com/14187674/211327507-39f21a74-0a43-43f0-
 **If you have usecases for any other operations please open an issue.**
 
 ## Installation
-Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
+### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
-### For Nvim-tree Users
+#### For Nvim-tree Users
 ```lua
 use {
   'antosha417/nvim-lsp-file-operations',
@@ -31,7 +31,7 @@ use {
 }
 ```
 
-### For Neo-tree Users
+#### For Neo-tree Users
 ```lua
 use {
   'antosha417/nvim-lsp-file-operations',
@@ -39,6 +39,41 @@ use {
     "nvim-lua/plenary.nvim",
     "nvim-neo-tree/neo-tree.nvim",
   }
+}
+```
+
+### Using [lazy.nvim](https://github.com/folke/lazy.nvim) 
+Note that the config function will let you skip the setup step.
+
+#### For Nvim-tree Users
+```lua
+return {
+  {
+    "antosha417/nvim-lsp-file-operations",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-tree/nvim-tree.lua",
+    },
+    config = function()
+      require("lsp-file-operations").setup()
+    end,
+  },
+}
+```
+
+#### For Neo-tree Users
+```lua
+return {
+  {
+    "antosha417/nvim-lsp-file-operations",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-neo-tree/neo-tree.nvim",
+    },
+    config = function()
+      require("lsp-file-operations").setup()
+    end,
+  },
 }
 ```
 
