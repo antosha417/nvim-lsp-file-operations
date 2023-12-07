@@ -8,8 +8,8 @@ local function getWorkspaceEdit(client, old_name, new_name)
   local will_rename_params = {
     files = {
       {
-        oldUri = "file://" .. old_name,
-        newUri = "file://" .. new_name,
+        oldUri = vim.uri_from_fname(old_name),
+        newUri = vim.uri_from_fname(new_name),
       }
     }
   }
