@@ -1,7 +1,8 @@
 local M = {}
 
-local will_rename = require('lsp-file-operations.will-rename')
-local log = require('lsp-file-operations.log')
+local will_rename = require("lsp-file-operations.will-rename")
+local did_rename = require("lsp-file-operations.did-rename")
+local log = require("lsp-file-operations.log")
 
 local default_config = {
   debug = false,
@@ -15,14 +16,15 @@ M.setup = function(opts)
   end
 
   -- nvim-tree integration
-  local ok_nvim_tree, nvim_tree_api = pcall(require, 'nvim-tree.api')
+  local ok_nvim_tree, nvim_tree_api = pcall(require, "nvim-tree.api")
   if ok_nvim_tree then
     log.debug("Setting up nvim-tree integration")
     nvim_tree_api.events.subscribe(nvim_tree_api.events.Event.WillRenameNode, will_rename.callback)
+    nvim_tree_api.events.subscribe(nvim_tree_api.events.Event.NodeRenamed, did_rename.callback)
   end
 
   -- neo-tree integration
-  local ok_neo_tree, neo_tree_events = pcall(require, 'neo-tree.events')
+  local ok_neo_tree, neo_tree_events = pcall(require, "neo-tree.events")
   if ok_neo_tree then
     log.debug("Setting up neo-tree integration")
 
@@ -30,28 +32,51 @@ M.setup = function(opts)
     local callback = function(args)
       local data = {
         old_name = args.source,
-        new_name = args.destination
+        new_name = args.destination,
       }
-      log.debug("LSP rename data", vim.inspect(data))
+      log.debug("LSP will rename data", vim.inspect(data))
       will_rename.callback(data)
     end
 
+    local did_rename_callback = function(args)
+      local data = {
+        old_name = args.source,
+        new_name = args.destination,
+      }
+      log.debug("LSP did rename data", vim.inspect(data))
+      did_rename.callback(data)
+    end
+
     -- just in case setup is called multiple times
-    local rename_id = "nvim_lsp_file_operations_rename"
-    local move_id = "nvim_lsp_file_operations_move"
-    neo_tree_events.unsubscribe({ id = rename_id })
-    neo_tree_events.unsubscribe({ id = move_id })
+    local will_rename_id = "nvim_lsp_file_operations_will_rename"
+    local will_move_id = "nvim_lsp_file_operations_will_move"
+    local did_rename_id = "nvim_lsp_file_operations_did_rename"
+    local did_move_id = "nvim_lsp_file_operations_did_move"
+    neo_tree_events.unsubscribe({ id = will_rename_id })
+    neo_tree_events.unsubscribe({ id = will_move_id })
+    neo_tree_events.unsubscribe({ id = did_rename_id })
+    neo_tree_events.unsubscribe({ id = did_move_id })
 
     -- now subscribe to the events
     neo_tree_events.subscribe({
-      id = rename_id,
-      event = neo_tree_events.FILE_RENAMED,
-      handler = callback
+      id = will_rename_id,
+      event = neo_tree_events.BEFORE_FILE_RENAME,
+      handler = callback,
     })
     neo_tree_events.subscribe({
-      id = move_id,
+      id = will_move_id,
+      event = neo_tree_events.BEFORE_FILE_MOVE,
+      handler = callback,
+    })
+    neo_tree_events.subscribe({
+      id = did_rename_id,
+      event = neo_tree_events.FILE_RENAMED,
+      handler = did_rename_callback,
+    })
+    neo_tree_events.subscribe({
+      id = did_move_id,
       event = neo_tree_events.FILE_MOVED,
-      handler = callback
+      handler = did_rename_callback,
     })
     log.debug("Neo-tree integration setup complete")
   end
