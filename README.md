@@ -7,8 +7,14 @@ and [neo-tree](https://github.com/nvim-neo-tree/neo-tree.nvim). But other integr
 
 ## Features
 
-- [workspace/WillRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles): WillRename requests are supported in couple lsp-servers and allows to automagically apply some refactorings while you moving files around. Currently tested with [metals](https://scalameta.org/metals/), [rust-analyzer](https://rust-analyzer.github.io/) and [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server)
-- [workspace/DidRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didRenameFiles): DidRename notifications are supported in couple lsp-servers and also can be used to automagically apply some refactorings while you moving files around. Currently tested with [vtsls](https://github.com/yioneko/vtsls) and [lua-language-server](https://github.com/LuaLS/lua-language-server)
+Full implementation of all [`workspace.fileOperations`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) in the current lsp spec:
+
+- [workspace/WillRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles) (Currently tested with [metals](https://scalameta.org/metals/), [rust-analyzer](https://rust-analyzer.github.io/) and [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server))
+- [workspace/DidRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didRenameFiles) (Currently tested with [vtsls](https://github.com/yioneko/vtsls) and [lua-language-server](https://github.com/LuaLS/lua-language-server))
+- [workspace/WillCreate](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willCreateFiles)
+- [workspace/DidCreate](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didCreateFiles)
+- [workspace/WillDelete](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willDeleteFiles)
+- [workspace/DidDelete](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didDeleteFiles)
 
 https://user-images.githubusercontent.com/14187674/211327507-39f21a74-0a43-43f0-ba3e-91109125286c.mp4
 
