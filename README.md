@@ -27,25 +27,31 @@ https://user-images.githubusercontent.com/14187674/211327507-39f21a74-0a43-43f0-
 #### For Nvim-tree Users
 
 ```lua
-use({
+use {
   "antosha417/nvim-lsp-file-operations",
   requires = {
     "nvim-lua/plenary.nvim",
     "nvim-tree/nvim-tree.lua",
   },
-})
+  config = function()
+    require("lsp-file-operations").setup()
+  end,
+}
 ```
 
 #### For Neo-tree Users
 
 ```lua
-use({
+use {
   "antosha417/nvim-lsp-file-operations",
   requires = {
     "nvim-lua/plenary.nvim",
     "nvim-neo-tree/neo-tree.nvim",
   },
-})
+  config = function()
+    require("lsp-file-operations").setup()
+  end,
+}
 ```
 
 ### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
@@ -99,12 +105,12 @@ require("lsp-file-operations").setup()
 This is equivalent to:
 
 ```lua
-require("lsp-file-operations").setup({
+require("lsp-file-operations").setup {
   -- used to see debug logs in file `vim.fn.stdpath("cache") .. lsp-file-operations.log`
   debug = false,
   -- how long to wait (in milliseconds) for file rename information before cancelling
   timeout_ms = 10000,
-})
+}
 ```
 
 ## Contributing
