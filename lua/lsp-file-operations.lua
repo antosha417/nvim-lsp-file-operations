@@ -1,12 +1,46 @@
 local M = {}
 
-local will_rename = require('lsp-file-operations.will-rename')
-local log = require('lsp-file-operations.log')
+local log = require("lsp-file-operations.log")
 
 local default_config = {
   debug = false,
   timeout_ms = 10000,
+  operations = {
+    willRenameFiles = true,
+    didRenameFiles = true,
+    willCreateFiles = true,
+    didCreateFiles = true,
+    willDeleteFiles = true,
+    didDeleteFiles = true,
+  },
 }
+
+local modules = {
+  willRenameFiles = "lsp-file-optionations.will-rename",
+  didRenameFiles = "lsp-file-optionations.did-rename",
+  willCreateFiles = "lsp-file-optionations.will-create",
+  didCreateFiles = "lsp-file-optionations.did-create",
+  willDeleteFiles = "lsp-file-optionations.will-delete",
+  didDeleteFiles = "lsp-file-optionations.did-delete",
+}
+
+---@alias HandlerMap table<string, string[]> a mapping from modules to events that trigger it
+
+--- helper function to subscribe events to a given module callback
+---@param op_events HandlerMap the table that maps modules to event strings
+---@param subscribe fun(module: string, event: string) the function for how to subscribe a module to an event
+local function setup_events(op_events, subscribe)
+  for operation, enabled in pairs(M.config.operations) do
+    if enabled then
+      local module, events = modules[operation], op_events[operation]
+      if module and events then
+        vim.tbl_map(function(event)
+          subscribe(module, event)
+        end, events)
+      end
+    end
+  end
+end
 
 M.setup = function(opts)
   M.config = vim.tbl_deep_extend("force", default_config, opts or {})
@@ -15,44 +49,61 @@ M.setup = function(opts)
   end
 
   -- nvim-tree integration
-  local ok_nvim_tree, nvim_tree_api = pcall(require, 'nvim-tree.api')
+  local ok_nvim_tree, nvim_tree_api = pcall(require, "nvim-tree.api")
   if ok_nvim_tree then
     log.debug("Setting up nvim-tree integration")
-    nvim_tree_api.events.subscribe(nvim_tree_api.events.Event.WillRenameNode, will_rename.callback)
+
+    ---@type HandlerMap
+    local nvim_tree_event = nvim_tree_api.events.Event
+    local events = {
+      willRenameFiles = { nvim_tree_event.WillRenameNode },
+      didRenameFiles = { nvim_tree_event.NodeRenamed },
+      willCreateFiles = { nvim_tree_event.WillCreateFile },
+      didCreateFiles = { nvim_tree_event.FileCreated, nvim_tree_event.FolderCreated },
+      willDeleteFiles = { nvim_tree_event.WillRemoveFile },
+      didDeleteFiles = { nvim_tree_event.FileRemoved, nvim_tree_event.FolderRemoved },
+    }
+    setup_events(events, function(module, event)
+      nvim_tree_api.events.subscribe(event, function(args)
+        require(module).callback(args)
+      end)
+    end)
   end
 
   -- neo-tree integration
-  local ok_neo_tree, neo_tree_events = pcall(require, 'neo-tree.events')
+  local ok_neo_tree, neo_tree_events = pcall(require, "neo-tree.events")
   if ok_neo_tree then
     log.debug("Setting up neo-tree integration")
 
-    -- We need to convert the neo-tree event data to the same format as nvim-tree
-    local callback = function(args)
-      local data = {
-        old_name = args.source,
-        new_name = args.destination
-      }
-      log.debug("LSP rename data", vim.inspect(data))
-      will_rename.callback(data)
-    end
-
-    -- just in case setup is called multiple times
-    local rename_id = "nvim_lsp_file_operations_rename"
-    local move_id = "nvim_lsp_file_operations_move"
-    neo_tree_events.unsubscribe({ id = rename_id })
-    neo_tree_events.unsubscribe({ id = move_id })
-
-    -- now subscribe to the events
-    neo_tree_events.subscribe({
-      id = rename_id,
-      event = neo_tree_events.FILE_RENAMED,
-      handler = callback
-    })
-    neo_tree_events.subscribe({
-      id = move_id,
-      event = neo_tree_events.FILE_MOVED,
-      handler = callback
-    })
+    ---@type HandlerMap
+    local events = {
+      willRenameFiles = { neo_tree_events.BEFORE_FILE_RENAME, neo_tree_events.BEFORE_FILE_MOVE },
+      didRenameFiles = { neo_tree_events.FILE_RENAMED, neo_tree_events.FILE_MOVED },
+      didCreateFiles = { neo_tree_events.FILE_ADDED },
+      didDeleteFiles = { neo_tree_events.FILE_DELETED },
+      -- currently no events in neo-tree for before creating or deleting, so unable to support those file operations
+      -- Issue to add the missing events: https://github.com/nvim-neo-tree/neo-tree.nvim/issues/1276
+    }
+    setup_events(events, function(module, event)
+      -- create an event name based on the module and the event
+      local id = ("%s.%s"):format(module, event)
+      -- just in case setup is called twice, unsubscribe from event
+      neo_tree_events.unsubscribe({ id = id })
+      neo_tree_events.subscribe({
+        id = id,
+        event = event,
+        handler = function(args)
+          -- translate neo-tree arguemnts to the same format as nvim-tree
+          if type(args) == "table" then
+            args = { old_name = args.source, new_name = args.destination }
+          else
+            args = { fname = args }
+          end
+          -- load module and call the callback
+          require(module).callback(args)
+        end,
+      })
+    end)
     log.debug("Neo-tree integration setup complete")
   end
 end
