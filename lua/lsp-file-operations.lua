@@ -16,12 +16,12 @@ local default_config = {
 }
 
 local modules = {
-  willRenameFiles = "lsp-file-optionations.will-rename",
-  didRenameFiles = "lsp-file-optionations.did-rename",
-  willCreateFiles = "lsp-file-optionations.will-create",
-  didCreateFiles = "lsp-file-optionations.did-create",
-  willDeleteFiles = "lsp-file-optionations.will-delete",
-  didDeleteFiles = "lsp-file-optionations.did-delete",
+  willRenameFiles = "lsp-file-operations.will-rename",
+  didRenameFiles = "lsp-file-operations.did-rename",
+  willCreateFiles = "lsp-file-operations.will-create",
+  didCreateFiles = "lsp-file-operations.did-create",
+  willDeleteFiles = "lsp-file-operations.will-delete",
+  didDeleteFiles = "lsp-file-operations.did-delete",
 }
 
 ---@alias HandlerMap table<string, string[]> a mapping from modules to events that trigger it
