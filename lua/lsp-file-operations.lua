@@ -106,6 +106,33 @@ M.setup = function(opts)
     end)
     log.debug("Neo-tree integration setup complete")
   end
+
+  -- mini.files integration
+  local ok_mini_files, _ = pcall(require, "mini.files")
+  if ok_mini_files then
+    log.debug("Setting up nvim-tree integration")
+
+    local events = {
+      willRenameFiles = { "MiniFilesActionRename" },
+      willCreateFiles = { "MiniFilesActionCreate" },
+      willDeleteFiles = { "MiniFilesActionDelete" },
+    }
+    setup_events(events, function(module, pattern)
+      vim.api.nvim_create_autocmd("User", {
+        pattern = pattern,
+        callback = function(event)
+          local args = {}
+          local data = event.data
+          if data.from == nil or data.to == nil then
+            args = { fname = data.from or data.to }
+          else
+            args = { old_name = data.from, new_name = data.to }
+          end
+          require(module).callback(args)
+        end,
+      })
+    end)
+  end
 end
 
 return M
