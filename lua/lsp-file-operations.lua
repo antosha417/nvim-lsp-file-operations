@@ -24,6 +24,15 @@ local modules = {
   didDeleteFiles = "lsp-file-operations.did-delete",
 }
 
+local capabilities = {
+  willRenameFiles = "willRename",
+  didRenameFiles = "didRename",
+  willCreateFiles = "willCreate",
+  didCreateFiles = "didCreate",
+  willDeleteFiles = "willDelete",
+  didDeleteFiles = "didDelete",
+}
+
 ---@alias HandlerMap table<string, string[]> a mapping from modules to events that trigger it
 
 --- helper function to subscribe events to a given module callback
@@ -106,6 +115,21 @@ M.setup = function(opts)
     end)
     log.debug("Neo-tree integration setup complete")
   end
+end
+
+--- The extra client capabilities provided by this plugin. To be merged with
+--- vim.lsp.protocol.make_client_capabilities() and sent to the LSP server.
+M.default_capabilities = function()
+  local config = M.config or default_config
+  local result = {
+    workspace = {
+      fileOperations = {}
+    }
+  }
+  for operation, capability in pairs(capabilities) do
+    result.workspace.fileOperations[capability] = config.operations[operation]
+  end
+  return result
 end
 
 return M
