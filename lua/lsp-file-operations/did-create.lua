@@ -4,7 +4,7 @@ local log = require("lsp-file-operations.log")
 local M = {}
 
 M.callback = function(data)
-  for _, client in pairs(vim.lsp.get_active_clients()) do
+  for _, client in pairs(vim.lsp.get_clients()) do
     local did_create =
       utils.get_nested_path(client, { "server_capabilities", "workspace", "fileOperations", "didCreate" })
     if did_create ~= nil then

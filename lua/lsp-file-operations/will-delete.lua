@@ -27,7 +27,7 @@ local function getWorkspaceEdit(client, fname)
 end
 
 M.callback = function(data)
-  for _, client in pairs(vim.lsp.get_active_clients()) do
+  for _, client in pairs(vim.lsp.get_clients()) do
     local will_delete =
       utils.get_nested_path(client, { "server_capabilities", "workspace", "fileOperations", "willDelete" })
     if will_delete ~= nil then
