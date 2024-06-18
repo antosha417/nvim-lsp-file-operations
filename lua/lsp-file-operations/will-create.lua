@@ -27,7 +27,7 @@ local function getWorkspaceEdit(client, fname)
 end
 
 M.callback = function(data)
-  for _, client in pairs(vim.lsp.get_active_clients()) do
+  for _, client in pairs(vim.lsp.get_clients()) do
     local will_create =
       utils.get_nested_path(client, { "server_capabilities", "workspace", "fileOperations", "willCreate" })
     if will_create ~= nil then
