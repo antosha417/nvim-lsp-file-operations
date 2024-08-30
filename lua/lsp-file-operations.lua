@@ -115,6 +115,39 @@ M.setup = function(opts)
     end)
     log.debug("Neo-tree integration setup complete")
   end
+
+  -- triptych integration
+  local ok_triptych, _ = pcall(require, "triptych")
+  if ok_triptych then
+    log.debug("Setting up triptych integration")
+
+    ---@type HandlerMap
+    local events = {
+      willRenameFiles = { 'TriptychWillMoveNode' },
+      didRenameFiles = { 'TriptychDidMoveNode' },
+      willCreateFiles = { 'TriptychWillCreateNode' },
+      didCreateFiles = { 'TriptychDidCreateNode' },
+      willDeleteFiles = { 'TriptychWillDeleteNode' },
+      didDeleteFiles = { 'TriptychDidDeleteNode' },
+    }
+    setup_events(events, function(module, event)
+      vim.api.nvim_create_autocmd('User', {
+        group = 'TriptychEvents',
+        pattern = event,
+        callback = function (callback_data)
+          local args = {}
+          local data = callback_data.data
+          if data.from_path and data.to_path then
+            args = { old_name = data.from_path, new_name = data.to_path }
+          else
+            args = { fname = data.path }
+          end
+          require(module).callback(args)
+        end,
+      })
+    end)
+  end
+  log.debug("triptych integration setup complete")
 end
 
 --- The extra client capabilities provided by this plugin. To be merged with
