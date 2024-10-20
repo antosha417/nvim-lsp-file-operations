@@ -146,6 +146,7 @@ M.setup = function(opts)
         end,
       })
     end)
+    log.debug("triptych integration setup complete")
   end
   log.debug("triptych integration setup complete")
 end
