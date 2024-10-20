@@ -148,7 +148,6 @@ M.setup = function(opts)
     end)
     log.debug("triptych integration setup complete")
   end
-  log.debug("triptych integration setup complete")
 end
 
 --- The extra client capabilities provided by this plugin. To be merged with
