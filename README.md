@@ -2,8 +2,7 @@
 
 `nvim-lsp-file-operations` is a Neovim plugin that adds support for file operations using built-in [LSP
 support](https://neovim.io/doc/user/lsp.html).
-This plugin works by subscribing to events emitted by [nvim-tree](https://github.com/nvim-tree/nvim-tree.lua)
-and [neo-tree](https://github.com/nvim-neo-tree/neo-tree.nvim). But other integrations are possible.
+This plugin works by subscribing to events emitted by [nvim-tree](https://github.com/nvim-tree/nvim-tree.lua), [neo-tree](https://github.com/nvim-neo-tree/neo-tree.nvim) and [triptych](https://github.com/simonmclean/triptych.nvim/tree/main). But other integrations are possible.
 
 ## Features
 
@@ -24,29 +23,15 @@ https://user-images.githubusercontent.com/14187674/211327507-39f21a74-0a43-43f0-
 
 ### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
-#### For Nvim-tree Users
-
 ```lua
 use {
   "antosha417/nvim-lsp-file-operations",
   requires = {
     "nvim-lua/plenary.nvim",
-    "nvim-tree/nvim-tree.lua",
-  },
-  config = function()
-    require("lsp-file-operations").setup()
-  end,
-}
-```
-
-#### For Neo-tree Users
-
-```lua
-use {
-  "antosha417/nvim-lsp-file-operations",
-  requires = {
-    "nvim-lua/plenary.nvim",
-    "nvim-neo-tree/neo-tree.nvim",
+    -- Uncomment whichever supported plugin(s) you use
+    -- "nvim-tree/nvim-tree.lua",
+    -- "nvim-neo-tree/neo-tree.nvim",
+    -- "simonmclean/triptych.nvim"
   },
   config = function()
     require("lsp-file-operations").setup()
@@ -58,32 +43,16 @@ use {
 
 Note that the config function will let you skip the setup step.
 
-#### For Nvim-tree Users
-
 ```lua
 return {
   {
     "antosha417/nvim-lsp-file-operations",
     dependencies = {
       "nvim-lua/plenary.nvim",
-      "nvim-tree/nvim-tree.lua",
-    },
-    config = function()
-      require("lsp-file-operations").setup()
-    end,
-  },
-}
-```
-
-#### For Neo-tree Users
-
-```lua
-return {
-  {
-    "antosha417/nvim-lsp-file-operations",
-    dependencies = {
-      "nvim-lua/plenary.nvim",
-      "nvim-neo-tree/neo-tree.nvim",
+    -- Uncomment whichever supported plugin(s) you use
+    -- "nvim-tree/nvim-tree.lua",
+    -- "nvim-neo-tree/neo-tree.nvim",
+    -- "simonmclean/triptych.nvim"
     },
     config = function()
       require("lsp-file-operations").setup()
