@@ -2,7 +2,7 @@
 
 `nvim-lsp-file-operations` is a Neovim plugin that adds support for file operations using built-in [LSP
 support](https://neovim.io/doc/user/lsp.html).
-This plugin works by subscribing to events emitted by [nvim-tree](https://github.com/nvim-tree/nvim-tree.lua), [neo-tree](https://github.com/nvim-neo-tree/neo-tree.nvim) and [triptych](https://github.com/simonmclean/triptych.nvim/tree/main). But other integrations are possible.
+This plugin works by subscribing to events emitted by [nvim-tree](https://github.com/nvim-tree/nvim-tree.lua), [neo-tree](https://github.com/nvim-neo-tree/neo-tree.nvim) and [triptych](https://github.com/simonmclean/triptych.nvim). But other integrations are possible.
 
 ## Features
 
