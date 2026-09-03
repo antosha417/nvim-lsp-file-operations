@@ -15,15 +15,17 @@ local M = {}
 --- ---
 ---@param T table<string, vim.validate.Spec|LspFileOps.ValidateSpec>
 function M.validate(T)
-  local max = vim.fn.has("nvim-0.11") == 1 and 3 or 4
+  -- Both APIs accept at most 3 spec elements: value, validator, optional/msg.
+  -- On >=0.11 the call is positional: vim.validate(name, value, validator, optional).
+  local legacy = vim.fn.has("nvim-0.11") == 0
   for name, spec in pairs(T) do
-    while #spec > max do
+    while #spec > 3 do
       table.remove(spec, #spec)
     end
     T[name] = spec
   end
 
-  if max == 3 then
+  if not legacy then
     ---@cast T LspFileOps.ValidateSpec
     for name, spec in pairs(T) do
       table.insert(spec, 1, name)
@@ -64,14 +66,14 @@ end
 ---@param keys (string|integer)[]
 ---@return table|nil
 function M.get_nested_path(T, keys)
+  if vim.tbl_isempty(keys) then
+    return T
+  end
+
   M.validate({
     T = { T, { "table" } },
     keys = { keys, { "table" } },
   })
-
-  if vim.tbl_isempty(keys) then
-    return T
-  end
 
   local key = keys[1]
   if T[key] == nil then
@@ -164,4 +166,3 @@ function M.matches_filters(filters, name)
 end
 
 return M
--- vim: set ts=2 sts=2 sw=2 et ai si sta:
