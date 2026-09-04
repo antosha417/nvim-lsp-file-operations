@@ -6,8 +6,7 @@ indent_width = 2
 line_endings = "Unix"
 quote_style = "AutoPreferDouble"
 space_after_function_names = "Never"
-syntax = 'LuaJIT'
+syntax = "LuaJIT"
 
 [sort_requires]
 enabled = false
-# vim: set ts=4 sts=4 sw=4 et ai si sta:
