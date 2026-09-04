@@ -176,10 +176,12 @@ function M.setup(opts)
   if ok_mini_files then
     log.debug("Setting up mini.files integration")
 
+    -- mini.files only emits post-action events, so only did* operations
+    -- can be supported (will* requests must be sent before the operation).
     local events = {
-      willRenameFiles = { "MiniFilesActionRename" },
-      willCreateFiles = { "MiniFilesActionCreate" },
-      willDeleteFiles = { "MiniFilesActionDelete" },
+      didRenameFiles = { "MiniFilesActionRename" },
+      didCreateFiles = { "MiniFilesActionCreate" },
+      didDeleteFiles = { "MiniFilesActionDelete" },
     }
     setup_events(events, function(module, pattern)
       vim.api.nvim_create_autocmd("User", {
