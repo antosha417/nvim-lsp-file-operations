@@ -170,6 +170,35 @@ function M.setup(opts)
     end)
     log.debug("triptych integration setup complete")
   end
+
+  -- mini.files integration
+  local ok_mini_files, _ = pcall(require, "mini.files")
+  if ok_mini_files then
+    log.debug("Setting up mini.files integration")
+
+    -- mini.files only emits post-action events, so only did* operations
+    -- can be supported (will* requests must be sent before the operation).
+    local events = {
+      didRenameFiles = { "MiniFilesActionRename" },
+      didCreateFiles = { "MiniFilesActionCreate" },
+      didDeleteFiles = { "MiniFilesActionDelete" },
+    }
+    setup_events(events, function(module, pattern)
+      vim.api.nvim_create_autocmd("User", {
+        pattern = pattern,
+        callback = function(event)
+          local args = {}
+          local data = event.data
+          if data.from == nil or data.to == nil then
+            args = { fname = data.from or data.to }
+          else
+            args = { old_name = data.from, new_name = data.to }
+          end
+          require(module).callback(args)
+        end,
+      })
+    end)
+  end
 end
 
 --- The extra client capabilities provided by this plugin. To be merged with
