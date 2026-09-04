@@ -18,8 +18,11 @@ local function make_client(cap_key, filters, response)
     client.server_capabilities.workspace.fileOperations[cap_key] =
       { filters = filters or { { pattern = { glob = "**/*.lua" } } } }
   end
-  function client.notify(self, method, params)
-    table.insert(self.notify_calls, { method = method, params = params })
+  -- Tolerates both call styles: client:notify(method, params) (>=0.11)
+  -- and client.notify(method, params) (legacy dot call, no self).
+  client.notify = function(a, b, c)
+    local method, params = c ~= nil and b or a, c ~= nil and c or b
+    table.insert(client.notify_calls, { method = method, params = params })
   end
   function client.request_sync(method, params, timeout_ms)
     table.insert(
