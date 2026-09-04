@@ -16,8 +16,9 @@ in the current lsp spec:
 
 - [workspace/WillRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles)
   (Currently tested with [metals](https://scalameta.org/metals/),
-  [rust-analyzer](https://rust-analyzer.github.io/) and
-  [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server))
+  [rust-analyzer](https://rust-analyzer.github.io/),
+  [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server) and
+  [basedpyright](https://docs.basedpyright.com/latest))
 - [workspace/DidRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didRenameFiles)
   (Currently tested with [vtsls](https://github.com/yioneko/vtsls) and
   [lua-language-server](https://github.com/LuaLS/lua-language-server))
