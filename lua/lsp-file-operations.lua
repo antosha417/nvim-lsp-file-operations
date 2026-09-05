@@ -105,10 +105,10 @@ function M.setup(opts)
     local events = { ---@type table<string, string[]>
       willRenameFiles = { neo_tree_events.BEFORE_FILE_RENAME, neo_tree_events.BEFORE_FILE_MOVE },
       didRenameFiles = { neo_tree_events.FILE_RENAMED, neo_tree_events.FILE_MOVED },
+      willCreateFiles = { neo_tree_events.BEFORE_FILE_ADD },
       didCreateFiles = { neo_tree_events.FILE_ADDED },
+      willDeleteFiles = { neo_tree_events.BEFORE_FILE_DELETE },
       didDeleteFiles = { neo_tree_events.FILE_DELETED },
-      -- currently no events in neo-tree for before creating or deleting, so unable to support those file operations
-      -- Issue to add the missing events: https://github.com/nvim-neo-tree/neo-tree.nvim/issues/1276
     }
     setup_events(events, function(module, event)
       -- create an event name based on the module and the event
