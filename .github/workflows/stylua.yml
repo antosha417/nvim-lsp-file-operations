@@ -1,16 +1,17 @@
 name: StyLua
-
 on:
   push:
-    branches: [master]
+    branches:
+      - master
   pull_request:
-
 jobs:
   stylua:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: JohnnyMorganz/stylua-action@v4
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Check with StyLua
+        uses: JohnnyMorganz/stylua-action@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: latest
