@@ -35,7 +35,7 @@ function M.set_config(cfg)
 end
 
 --- helper function to subscribe events to a given module callback
----@param op_events table<string, string[]> the table that maps modules to event strings
+---@param op_events LspFileOpsEvents the table that maps modules to event strings
 ---@param subscribe fun(module: string, event: string) the function for how to subscribe a module to an event
 local function setup_events(op_events, subscribe)
   require("lsp-file-operations.utils").validate({
@@ -43,8 +43,7 @@ local function setup_events(op_events, subscribe)
     subscribe = { subscribe, { "function" } },
   })
 
-  ---@enum LspFileOpsModules
-  local modules = {
+  local modules = { ---@type table<LspFileOpsConfig.Operations, string>
     didCreateFiles = "lsp-file-operations.did-create",
     didDeleteFiles = "lsp-file-operations.did-delete",
     didRenameFiles = "lsp-file-operations.did-rename",
@@ -53,7 +52,7 @@ local function setup_events(op_events, subscribe)
     willRenameFiles = "lsp-file-operations.will-rename",
   }
   for operation, enabled in pairs(config.operations) do
-    ---@cast operation string
+    ---@cast operation LspFileOps.Operations
     ---@cast enabled boolean
     if enabled and modules[operation] and op_events[operation] then
       vim.tbl_map(function(event) ---@param event string
@@ -93,9 +92,15 @@ function M.setup(opts)
       willDeleteFiles = { nvim_tree_api.events.Event.WillRemoveFile },
       willRenameFiles = { nvim_tree_api.events.Event.WillRenameNode },
     }, function(module, event)
-      nvim_tree_api.events.subscribe(event, function(args)
-        require(module).callback(args)
-      end)
+      nvim_tree_api.events.subscribe(
+        event,
+        function(args) ---@param args { fname: string }|{ new_name: string, old_name: string }
+          local ok, mod = pcall(require, module) ---@type boolean, LspFileOps.AllModules|nil|?
+          if ok and mod then
+            mod.callback(args)
+          end
+        end
+      )
     end)
   end
 
@@ -111,15 +116,17 @@ function M.setup(opts)
       willDeleteFiles = { neo_tree_events.BEFORE_FILE_DELETE },
       willRenameFiles = { neo_tree_events.BEFORE_FILE_RENAME, neo_tree_events.BEFORE_FILE_MOVE },
     }, function(module, event)
-      local sub_args = {
+      local sub_args = { ---@type neotree.event.Handler
         id = ("%s.%s"):format(module, event),
         event = event,
         handler = function(args) ---@param args { source: string, destination: string }|string
-          -- translate neo-tree arguemnts to the same format as nvim-tree
-          require(module).callback(
-            type(args) == "table" and { new_name = args.destination, old_name = args.source }
-              or { fname = args }
-          )
+          local ok, mod = pcall(require, module) ---@type boolean, LspFileOps.AllModules|nil|?
+          if ok and mod then -- translate neo-tree arguemnts to the same format as nvim-tree
+            mod.callback(
+              type(args) == "table" and { new_name = args.destination, old_name = args.source }
+                or { fname = args }
+            )
+          end
         end,
       }
       neo_tree_events.unsubscribe(sub_args) -- just in case setup is called twice, unsubscribe from event
@@ -143,11 +150,14 @@ function M.setup(opts)
         group = "TriptychEvents",
         pattern = event,
         callback = function(ev)
-          require(module).callback(
-            (ev.data.from_path and ev.data.to_path)
-                and { new_name = ev.data.to_path, old_name = ev.data.from_path }
-              or { fname = ev.data.path }
-          )
+          local ok, mod = pcall(require, module) ---@type boolean, LspFileOps.AllModules|nil|?
+          if ok and mod then
+            mod.callback(
+              (ev.data.from_path and ev.data.to_path)
+                  and { new_name = ev.data.to_path, old_name = ev.data.from_path }
+                or { fname = ev.data.path }
+            )
+          end
         end,
       })
     end)

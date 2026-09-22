@@ -46,7 +46,7 @@ function M.client_notify(client, method, params)
   })
 
   if vim.fn.has("nvim-0.11") == 1 then
-    client.notify(client, method, params)
+    client:notify(method, params)
   else
     client.notify(method, params) ---@diagnostic disable-line:param-type-mismatch
   end

@@ -1,5 +1,21 @@
 ---@meta
 
+---@alias LspFileOps.Operations
+---|'didCreateFiles'
+---|'didDeleteFiles'
+---|'didRenameFiles'
+---|'willCreateFiles'
+---|'willDeleteFiles'
+---|'willRenameFiles'
+
+---@alias LspFileOps.AllModules
+---|LspFileOps.DidCreate
+---|LspFileOps.DidDelete
+---|LspFileOps.DidRename
+---|LspFileOps.WillCreate
+---|LspFileOps.WillDelete
+---|LspFileOps.WillRename
+
 ---@class (exact) LspFileOpsConfig.Operations
 ---@field didCreateFiles? boolean
 ---@field didDeleteFiles? boolean
@@ -7,6 +23,14 @@
 ---@field willCreateFiles? boolean
 ---@field willDeleteFiles? boolean
 ---@field willRenameFiles? boolean
+
+---@class (exact) LspFileOpsEvents: LspFileOpsConfig.Operations
+---@field didCreateFiles string[]
+---@field didDeleteFiles string[]
+---@field didRenameFiles string[]
+---@field willCreateFiles string[]
+---@field willDeleteFiles string[]
+---@field willRenameFiles string[]
 
 ---@class (exact) LspFileOpsConfig
 ---@field debug? boolean
