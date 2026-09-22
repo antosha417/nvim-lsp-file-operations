@@ -1,15 +1,16 @@
-local utils = require("lsp-file-operations.utils")
-local log = require("lsp-file-operations.log")
-
 ---@class LspFileOps.DidCreate
 local M = {}
 
+---@param data { fname: string }
 function M.callback(data)
-  utils.validate({ data = { data, { "table" } } })
+  local utils = require("lsp-file-operations.utils")
+  utils.validate({
+    data = { data, { "table" } },
+    ["data.fname"] = { data.fname, { "string" } },
+  })
 
-  local clients = utils.get_clients()
-  for _, client in pairs(clients) do
-    if client.initialized ~= nil and client.initialized then
+  for _, client in ipairs(utils.get_clients()) do
+    if client.initialized then
       local did_create = utils.get_nested_path(
         client,
         { "server_capabilities", "workspace", "fileOperations", "didCreate" }
@@ -17,7 +18,10 @@ function M.callback(data)
       if did_create and utils.matches_filters(did_create.filters or {}, data.fname) then
         local params = { files = { { uri = vim.uri_from_fname(data.fname) } } }
         utils.client_notify(client, "workspace/didCreateFiles", params)
-        log.debug("Sending workspace/didCreateFiles notification", params)
+        require("lsp-file-operations.log").debug(
+          "Sending workspace/didCreateFiles notification",
+          params
+        )
       end
     end
   end

@@ -1,12 +1,4 @@
----Non-legacy validation spec (>=v0.11)
----@class LspFileOps.ValidateSpec
----@field [1] any
----@field [2] vim.validate.Validator
----@field [3]? boolean
----@field [4]? string
-
-local Path = require("plenary").path
-local log = require("lsp-file-operations.log")
+---@module "lsp-file-operations._meta"
 
 ---@class LspFileOps.Utils
 local M = {}
@@ -31,11 +23,10 @@ function M.validate(T)
       table.insert(spec, 1, name)
       vim.validate(unpack(spec))
     end
-    return
+  else
+    ---@cast T vim.validate.Spec
+    vim.validate(T)
   end
-
-  ---@cast T vim.validate.Spec
-  vim.validate(T)
 end
 
 ---@return vim.lsp.Client[] clients
@@ -55,16 +46,15 @@ function M.client_notify(client, method, params)
   })
 
   if vim.fn.has("nvim-0.11") == 1 then
-    client:notify(method, params)
-    return
+    client.notify(client, method, params)
+  else
+    client.notify(method, params) ---@diagnostic disable-line:param-type-mismatch
   end
-
-  client.notify(method, params) ---@diagnostic disable-line:param-type-mismatch
 end
 
 ---@param T table
----@param keys (string|integer)[]
----@return table|nil
+---@param keys string[]
+---@return lsp.FileOperationRegistrationOptions|nil|? nested_path
 function M.get_nested_path(T, keys)
   if vim.tbl_isempty(keys) then
     return T
@@ -75,11 +65,8 @@ function M.get_nested_path(T, keys)
     keys = { keys, { "table" } },
   })
 
-  local key = keys[1]
-  if T[key] == nil then
-    return
-  end
-  return M.get_nested_path(T[key], { unpack(keys, 2) })
+  return vim.tbl_isempty(keys) and T
+    or (T[keys[1]] ~= nil and M.get_nested_path(T[keys[1]], { unpack(keys, 2) }) or nil)
 end
 
 -- needed for globs like `**/`
@@ -92,7 +79,7 @@ local function ensure_dir_trailing_slash(path, is_dir)
     is_dir = { is_dir, { "boolean" } },
   })
 
-  return (is_dir and not path:match("/$")) and (path .. "/") or path
+  return path .. ((is_dir and not path:match("/$")) and "/" or "")
 end
 
 ---@param name string
@@ -101,10 +88,8 @@ end
 local function get_absolute_path(name)
   M.validate({ name = { name, { "string" } } })
 
-  local path = Path:new(name)
-  local is_dir = path:is_dir()
-  local absolute_path = ensure_dir_trailing_slash(path:absolute(), is_dir)
-  return absolute_path, is_dir
+  local path = require("plenary").path:new(name)
+  return ensure_dir_trailing_slash(path:absolute(), path:is_dir()), path:is_dir()
 end
 
 ---@param pattern lsp.FileOperationPattern
@@ -112,14 +97,15 @@ end
 local function get_regex(pattern)
   M.validate({ pattern = { pattern, { "table" } } })
 
-  local regex = vim.fn.glob2regpat(pattern.glob)
-  return (pattern.options and pattern.options.ignoreCase) and ("\\c" .. regex) or regex
+  return ((pattern.options and pattern.options.ignoreCase) and [[\c]] or "")
+    .. vim.fn.glob2regpat(pattern.glob)
 end
 
 -- filter: FileOperationFilter
 ---@param filter lsp.FileOperationFilter
 ---@param name string
 ---@param is_dir boolean
+---@return boolean matched
 local function match_filter(filter, name, is_dir)
   M.validate({
     filter = { filter, { "table" } },
@@ -127,33 +113,34 @@ local function match_filter(filter, name, is_dir)
     is_dir = { is_dir, { "boolean" } },
   })
 
-  local match_type = filter.pattern.matches
+  local matched = false
   if
-    not match_type
-    or (match_type == "folder" and is_dir)
-    or (match_type == "file" and not is_dir)
+    not filter.pattern.matches
+    or (filter.pattern.matches == "folder" and is_dir)
+    or (filter.pattern.matches == "file" and not is_dir)
   then
     local regex = get_regex(filter.pattern)
-    log.debug("Matching name", name, "to pattern", regex)
+    require("lsp-file-operations.log").debug("Matching name", name, "to pattern", regex)
+
     local previous_ignorecase = vim.o.ignorecase
     vim.o.ignorecase = false
-    local matched = vim.fn.match(name, regex) ~= -1
-    vim.o.ignorecase = previous_ignorecase
-    return matched
-  end
 
-  return false
+    matched = vim.fn.match(name, regex) ~= -1
+    vim.o.ignorecase = previous_ignorecase
+  end
+  return matched
 end
 
--- filters: FileOperationFilter[]
 ---@param filters lsp.FileOperationFilter[]
 ---@param name string
+---@return boolean matches
 function M.matches_filters(filters, name)
   M.validate({
     filters = { filters, { "table" } },
     name = { name, { "string" } },
   })
 
+  local log = require("lsp-file-operations.log")
   local absolute_path, is_dir = get_absolute_path(name)
   for _, filter in pairs(filters) do
     if match_filter(filter, absolute_path, is_dir) then
@@ -163,6 +150,50 @@ function M.matches_filters(filters, name)
   end
   log.debug("Path didn't match any filters", absolute_path, filters)
   return false
+end
+
+---@return lsp.WorkspaceEdit|nil|? workspace_edit
+---@overload fun(request: "willCreateFiles"|"willDeleteFiles", client: vim.lsp.Client, fname: string): workspace_edit: lsp.WorkspaceEdit|nil|?
+---@overload fun(request: "willRenameFiles", client: vim.lsp.Client, old_name: string, new_name: string): workspace_edit: lsp.WorkspaceEdit|nil|?
+function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
+  M.validate({
+    request = { request, { "string" } },
+    client = { client, { "table" } },
+    fname_or_old_name = { fname_or_old_name, { "string" } },
+    new_name = { new_name, { "string", "nil" }, true },
+  })
+
+  if
+    not vim.tbl_contains({ "willCreateFiles", "willDeleteFiles", "willRenameFiles" }, request)
+    or (request == "willRenameFiles" and not new_name)
+  then -- Abort on invalid/incomplete parameters
+    return
+  end
+
+  local log = require("lsp-file-operations.log")
+  local params = {
+    files = {
+      request == "willRenameFiles" and {
+        newUri = vim.uri_from_fname(new_name),
+        oldUri = vim.uri_from_fname(fname_or_old_name),
+      } or { uri = vim.uri_from_fname(fname_or_old_name) },
+    },
+  }
+  local method = ("workspace/%s"):format(request)
+  log.debug(("Sending %s request"):format(method), params)
+
+  local timeout_ms = require("lsp-file-operations").get_config().timeout_ms
+  local success, resp = pcall(client.request_sync, method, params, timeout_ms) ---@type boolean, { err?: lsp.ResponseError, result?: lsp.WorkspaceEdit }|nil|?
+  if success and resp and resp.result then
+    log.debug(("Got %s response"):format(method), resp)
+    return resp.result
+  end
+
+  if not success then
+    log.error(("Error while sending (%s) request"):format(method), resp)
+  elseif not (resp and resp.result) then
+    log.warn(("Got empty %s response, maybe a timeout?"):format(method))
+  end
 end
 
 return M

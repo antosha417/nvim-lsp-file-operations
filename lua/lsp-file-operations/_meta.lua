@@ -1,0 +1,23 @@
+---@meta
+
+---@class (exact) LspFileOpsConfig.Operations
+---@field didCreateFiles? boolean
+---@field didDeleteFiles? boolean
+---@field didRenameFiles? boolean
+---@field willCreateFiles? boolean
+---@field willDeleteFiles? boolean
+---@field willRenameFiles? boolean
+
+---@class (exact) LspFileOpsConfig
+---@field debug? boolean
+---@field timeout_ms? integer
+---@field operations? LspFileOpsConfig.Operations
+
+---Non-legacy validation spec (>=v0.11)
+---@class LspFileOps.ValidateSpec
+---@field [1] any
+---@field [2] vim.validate.Validator
+---@field [3]? boolean
+---@field [4]? string
+
+-- vim: set ts=2 sts=2 sw=2 et ai si sta:
