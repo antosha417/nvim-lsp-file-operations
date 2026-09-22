@@ -1,42 +1,51 @@
 # nvim-lsp-file-operations
 
-`nvim-lsp-file-operations` is a Neovim plugin that adds support for file
-operations using built-in [LSP support](https://neovim.io/doc/user/lsp.html).
-This plugin works by subscribing to events emitted by
-[nvim-tree](https://github.com/nvim-tree/nvim-tree.lua),
-[neo-tree](https://github.com/nvim-neo-tree/neo-tree.nvim) and
-[triptych](https://github.com/simonmclean/triptych.nvim). But other integrations
-are possible.
+`nvim-lsp-file-operations` is a Neovim plugin that adds support for file operations using built-in [LSP support](https://neovim.io/doc/user/lsp.html).
 
-## Features
+This plugin works by subscribing to events emitted by either of these plugins
+(other integrations may be added if needed):
 
-Full implementation of all
-[`workspace.fileOperations`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/)
-in the current lsp spec:
-
-- [workspace/WillRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles)
-  (Currently tested with [metals](https://scalameta.org/metals/),
-  [rust-analyzer](https://rust-analyzer.github.io/),
-  [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server) and
-  [basedpyright](https://docs.basedpyright.com/latest))
-- [workspace/DidRename](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didRenameFiles)
-  (Currently tested with [vtsls](https://github.com/yioneko/vtsls) and
-  [lua-language-server](https://github.com/LuaLS/lua-language-server))
-- [workspace/WillCreate](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willCreateFiles)
-- [workspace/DidCreate](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didCreateFiles)
-- [workspace/WillDelete](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willDeleteFiles)
-- [workspace/DidDelete](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didDeleteFiles)
+- [nvim-neo-tree/neo-tree.nvim](https://github.com/nvim-neo-tree/neo-tree.nvim)
+- [nvim-tree/nvim-tree.lua](https://github.com/nvim-tree/nvim-tree.lua)
+- [simonmclean/triptych.nvim](https://github.com/simonmclean/triptych.nvim)
 
 <https://user-images.githubusercontent.com/14187674/211327507-39f21a74-0a43-43f0-ba3e-91109125286c.mp4>
 
-**If you have usecases for any other operations please open an issue.**
+---
+
+## Features
+
+Full implementation of all [`workspace.fileOperations`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) for the current LSP spec:
+
+- [`workspace/DidCreate`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didCreateFiles)
+- [`workspace/DidDelete`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didDeleteFiles)
+- [`workspace/DidRename`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didRenameFiles) - Tested in:
+  - [lua-language-server](https://github.com/LuaLS/lua-language-server)
+  - [vtsls](https://github.com/yioneko/vtsls)
+- [`workspace/WillCreate`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willCreateFiles)
+- [`workspace/WillDelete`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willDeleteFiles)
+- [`workspace/WillRename`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles) - Tested in:
+  - [basedpyright](https://docs.basedpyright.com/latest)
+  - [metals](https://scalameta.org/metals/)
+  - [rust-analyzer](https://rust-analyzer.github.io/)
+  - [typescript-language-server](https://github.com/typescript-language-server/typescript-language-server)
+
+**If you have use cases for any other operations please open an issue.**
+
+---
 
 ## Installation
+
+> [!IMPORTANT]
+> **The order in which the plugins are loaded matters!**
+>
+> For example, `neo-tree.nvim` must load before `nvim-lsp-file-operations` for this to work,
+> so `nvim-lsp-file-operations` depends on `neo-tree.nvim`, not the other way around!
 
 ### Using [pckr.nvim](https://github.com/lewis6991/pckr.nvim)
 
 ```lua
-require('pckr').add({
+require("pckr").add({
   "antosha417/nvim-lsp-file-operations",
   requires = {
     "nvim-lua/plenary.nvim",
@@ -52,8 +61,6 @@ require('pckr').add({
 ```
 
 ### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
-
-Note that the config function will let you skip the setup step.
 
 ```lua
 return {
@@ -73,9 +80,7 @@ return {
 }
 ```
 
-Please note that the order that the plugins load in is important, neo-tree must
-load before nvim-lsp-file-operations for it to work, so nvim-lsp-file-operations
-depends on neo-tree and not the other way around.
+---
 
 ## Setup
 
@@ -87,49 +92,74 @@ This is equivalent to:
 
 ```lua
 require("lsp-file-operations").setup {
-  -- used to see debug logs in file `vim.fn.stdpath("cache") .. lsp-file-operations.log`
+  -- Used to see debug logs, located at `vim.fn.stdpath("cache") .. "/lsp-file-operations.log"`
   debug = false,
-  -- select which file operations to enable
+
+  -- Select which file operations to enable
   operations = {
-    willRenameFiles = true,
+    didCreateFiles = true,
+    didDeleteFiles = true,
     didRenameFiles = true,
     willCreateFiles = true,
-    didCreateFiles = true,
     willDeleteFiles = true,
-    didDeleteFiles = true,
+    willRenameFiles = true,
   },
-  -- how long to wait (in milliseconds) for file rename information before cancelling
+
+  -- How long to wait (in milliseconds) for file rename information before cancelling
   timeout_ms = 10000,
 }
 ```
 
-Some LSP servers also expect to be informed about the extended client
-capabilities. If you use
-[nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) you can configure the
-default client capabilities that will be sent to all servers like this:
+Some LSP servers also expect to be informed about the extended client capabilities.
+Follow any of the instructions below based on your Neovim version:
+
+<details>
+<summary>Neovim <code>v0.11</code> or later</summary>
+
+You can use `vim.lsp.config()` to set the global capabilities for every server:
 
 ```lua
-local lspconfig = require'lspconfig'
+-- Set global defaults for all servers
+vim.lsp.config("*", {
+  capabilities = vim.tbl_deep_extend(
+    "force",
+    vim.lsp.protocol.make_client_capabilities(),
+    -- ANY OTHER CAPABILITIES. e.g. for `blink.cmp`, etc.
+    require("lsp-file-operations").default_capabilities()
+  )
+})
+```
+
+</details>
+<details>
+<summary>Neovim older than <code>v0.11</code></summary>
+
+If you use [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) you can configure the default client capabilities for all servers:
+
+```lua
+local lspconfig = require("lspconfig")
 
 -- Set global defaults for all servers
 lspconfig.util.default_config = vim.tbl_extend(
-  'force',
+  "force",
   lspconfig.util.default_config,
   {
     capabilities = vim.tbl_deep_extend(
       "force",
       vim.lsp.protocol.make_client_capabilities(),
-      -- returns configured operations if setup() was already called
-      -- or default operations if not
-      require'lsp-file-operations'.default_capabilities(),
+      -- ANY OTHER CAPABILITIES. e.g. for `blink.cmp`, etc.
+      require("lsp-file-operations").default_capabilities()
     )
   }
 )
 ```
 
+</details>
+
+---
+
 ## Contributing
 
 PRs are always welcome.
 
-This project uses [StyLua](https://github.com/JohnnyMorganz/StyLua). Please run
-`stylua .` before committing.
+This project uses [StyLua](https://github.com/JohnnyMorganz/StyLua). Please run `stylua .` before committing.
