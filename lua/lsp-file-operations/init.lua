@@ -23,6 +23,17 @@ function M.get_config()
   return config
 end
 
+---@param cfg? LspFileOpsConfig
+function M.set_config(cfg)
+  if cfg and type(cfg) == "table" then
+    for k, v in pairs(cfg) do
+      config[k] = v
+    end
+  else
+    config = cfg
+  end
+end
+
 --- helper function to subscribe events to a given module callback
 ---@param op_events table<string, string[]> the table that maps modules to event strings
 ---@param subscribe fun(module: string, event: string) the function for how to subscribe a module to an event

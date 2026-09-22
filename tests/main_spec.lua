@@ -5,15 +5,15 @@ describe("lsp-file-operations", function()
     local saved_config
 
     before_each(function()
-      saved_config = lfo.config
+      saved_config = lfo.get_config()
     end)
 
     after_each(function()
-      lfo.config = saved_config
+      lfo.set_config(saved_config)
     end)
 
     it("enables all six file operations by default (before setup)", function()
-      lfo.config = nil
+      lfo.set_config(nil)
       local caps = lfo.default_capabilities()
       assert.are.same({
         workspace = {
@@ -30,7 +30,7 @@ describe("lsp-file-operations", function()
     end)
 
     it("reflects operations disabled in the config", function()
-      lfo.config = {
+      lfo.set_config({
         operations = {
           didCreateFiles = true,
           didDeleteFiles = true,
@@ -39,7 +39,7 @@ describe("lsp-file-operations", function()
           willDeleteFiles = true,
           willRenameFiles = false,
         },
-      }
+      })
       local caps = lfo.default_capabilities()
       assert.is_false(caps.workspace.fileOperations.willRename)
       assert.is_true(caps.workspace.fileOperations.didCreate)

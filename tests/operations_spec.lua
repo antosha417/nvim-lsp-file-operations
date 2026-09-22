@@ -132,7 +132,7 @@ describe("will-* operations", function()
   local edit = { changes = { ["file:///dummy"] = {} } }
 
   before_each(function()
-    require("lsp-file-operations").config = { timeout_ms = 1000 }
+    require("lsp-file-operations").set_config({ timeout_ms = 1000 })
   end)
 
   for _, case in ipairs({
