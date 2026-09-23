@@ -1,8 +1,7 @@
----@class LspFileOps.DidCreate
-local M = {}
+---@alias LspFileOps.DidCreate fun(data: { fname: string })
 
 ---@param data { fname: string }
-function M.callback(data)
+return function(data)
   local utils = require("lsp-file-operations.utils")
   utils.validate({
     data = { data, { "table" } },
@@ -26,5 +25,3 @@ function M.callback(data)
     end
   end
 end
-
-return M

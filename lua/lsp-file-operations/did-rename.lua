@@ -1,8 +1,7 @@
----@class LspFileOps.DidRename
-local M = {}
+---@alias LspFileOps.DidRename fun(data: { old_name: string, new_name: string })
 
 ---@param data { old_name: string, new_name: string }
-function M.callback(data)
+return function(data)
   local utils = require("lsp-file-operations.utils")
   utils.validate({
     data = { data, { "table" } },
@@ -34,5 +33,3 @@ function M.callback(data)
     end
   end
 end
-
-return M

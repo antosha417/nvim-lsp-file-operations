@@ -97,7 +97,7 @@ function M.setup(opts)
         function(args) ---@param args { fname: string }|{ new_name: string, old_name: string }
           local ok, mod = pcall(require, module) ---@type boolean, LspFileOps.AllModules|nil|?
           if ok and mod then
-            mod.callback(args)
+            mod(args)
           end
         end
       )
@@ -122,7 +122,7 @@ function M.setup(opts)
         handler = function(args) ---@param args { source: string, destination: string }|string
           local ok, mod = pcall(require, module) ---@type boolean, LspFileOps.AllModules|nil|?
           if ok and mod then -- translate neo-tree arguemnts to the same format as nvim-tree
-            mod.callback(
+            mod(
               type(args) == "table" and { new_name = args.destination, old_name = args.source }
                 or { fname = args }
             )
@@ -152,7 +152,7 @@ function M.setup(opts)
         callback = function(ev)
           local ok, mod = pcall(require, module) ---@type boolean, LspFileOps.AllModules|nil|?
           if ok and mod then
-            mod.callback(
+            mod(
               (ev.data.from_path and ev.data.to_path)
                   and { new_name = ev.data.to_path, old_name = ev.data.from_path }
                 or { fname = ev.data.path }
