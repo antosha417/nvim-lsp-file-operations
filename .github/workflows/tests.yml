@@ -16,14 +16,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+      - name: Install Lua 5.1
+        uses: leafo/gh-actions-lua@v13
+        with:
+          luaVersion: "5.1.5"
+      - name: Install LuaRocks
+        uses: leafo/gh-actions-luarocks@v6
+      - name: Install nlua
+        run: luarocks install nlua
+      - name: Install busted
+        run: luarocks install busted
       - name: Setup Neovim
         uses: rhysd/action-setup-vim@v1.6.1
         with:
           neovim: true
           version: ${{ matrix.neovim_version }}
-      - name: Fetch plenary.nvim (test dependency)
-        run: |
-          git clone --depth 1 https://github.com/nvim-lua/plenary.nvim .test-deps/plenary.nvim
-      - name: Run tests
-        run: |
-          nvim --headless -u tests/minimal_init.lua -c "PlenaryBustedDirectory tests/ { minimal_init = 'tests/minimal_init.lua' }"
+      - name: Run tests with busted
+        run: busted

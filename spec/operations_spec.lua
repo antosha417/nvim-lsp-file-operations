@@ -1,5 +1,6 @@
 local utils = require("lsp-file-operations.utils")
 local stub = require("luassert.stub")
+local assert = require("luassert") --[[@as Luassert]]
 
 --- Build a fake LSP client.
 ---@param cap_key? string capability key under workspace.fileOperations (e.g. "didCreate")

@@ -13,12 +13,20 @@ case "$os-$arch" in
   darwin-x86_64) asset="nvim-macos-x86_64" ;;
   linux-x86_64) asset="nvim-linux-x86_64" ;;
   linux-aarch64) asset="nvim-linux-arm64" ;;
-  *) echo "unsupported platform: $os-$arch" >&2; exit 1 ;;
+  *)
+    echo "unsupported platform: $os-$arch" >&2
+    exit 1
+    ;;
 esac
 
-# Ensure plenary is available
-if [ ! -d "$DEPS/plenary.nvim" ]; then
-  git clone --depth 1 https://github.com/nvim-lua/plenary.nvim "$DEPS/plenary.nvim"
+if ! command -v busted &> /dev/null; then
+  if command -v luarocks &> /dev/null; then
+    luarocks install --local nlua
+    luarocks install --local busted
+  else
+    echo "busted is required for testing. Cannot find luarocks to download it!" >&2
+    exit 1
+  fi
 fi
 
 failed=0
@@ -28,14 +36,11 @@ for ver in $VERSIONS; do
     echo "==> Downloading Neovim $ver"
     mkdir -p "$DEPS/nvim-$ver"
     curl -sL "https://github.com/neovim/neovim/releases/download/$ver/$asset.tar.gz" \
-      | tar xz -C "$DEPS/nvim-$ver" --strip-components=1
+    | tar xz -C "$DEPS/nvim-$ver" --strip-components=1
   fi
 
   echo "==> Testing with $($nvim_bin --version | head -1)"
-  if ! "$nvim_bin" --headless -u tests/minimal_init.lua \
-    -c "PlenaryBustedDirectory tests/ { minimal_init = 'tests/minimal_init.lua' }"; then
-    failed=1
-  fi
+  ! busted && failed=1
 done
 
 if [ "$failed" -ne 0 ]; then
@@ -43,3 +48,4 @@ if [ "$failed" -ne 0 ]; then
   exit 1
 fi
 echo "==> All Neovim versions passed"
+# vim: set ts=2 sts=2 sw=2 et ft=bash:

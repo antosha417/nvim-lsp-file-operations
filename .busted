@@ -1,0 +1,14 @@
+-- Busted test configuration
+-- Run tests with: busted
+
+return {
+  _all = {
+    lua = "nlua",
+    lpath = "lua/?.lua;lua/?/init.lua",
+    verbose = true,
+    coverage = false,
+  },
+  default = {
+    output = "gtest",
+  },
+}

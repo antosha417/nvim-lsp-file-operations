@@ -1,4 +1,5 @@
 local lfo = require("lsp-file-operations")
+local assert = require("luassert") --[[@as Luassert]]
 
 describe("lsp-file-operations", function()
   describe("default_capabilities", function()
