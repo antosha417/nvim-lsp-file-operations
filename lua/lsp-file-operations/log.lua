@@ -35,13 +35,14 @@ local function gen_log_func(level)
         )
       end
 
-      if msg == "" then -- NOTE: Avoid notifying on empty output
-        return
+      if msg ~= "" then -- NOTE: Avoid notifying on empty output
+        vim.schedule(function() -- HACK: Use `vim.schedule` to avoid mangling the output of tests
+          vim.notify(
+            ("nvim-lsp-file-operations [%s]: %s"):format(level:upper(), msg),
+            levels[level]
+          )
+        end)
       end
-
-      vim.schedule(function() -- HACK: Use `vim.schedule` to avoid mangling the output of tests
-        vim.notify(("nvim-lsp-file-operations [%s]: %s"):format(level:upper(), msg), levels[level])
-      end)
     end
   end
 end
