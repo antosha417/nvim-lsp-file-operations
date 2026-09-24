@@ -9,7 +9,6 @@ local M = {}
 function M.validate(T)
   -- Both APIs accept at most 3 spec elements: value, validator, optional/msg.
   -- On >=0.11 the call is positional: vim.validate(name, value, validator, optional).
-  local legacy = vim.fn.has("nvim-0.11") == 0
   for name, spec in pairs(T) do
     while #spec > 3 do
       table.remove(spec, #spec)
@@ -17,7 +16,7 @@ function M.validate(T)
     T[name] = spec
   end
 
-  if not legacy then
+  if vim.fn.has("nvim-0.11") == 1 then
     ---@cast T LspFileOps.ValidateSpec
     for name, spec in pairs(T) do
       table.insert(spec, 1, name)
@@ -182,8 +181,13 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   local method = ("workspace/%s"):format(request)
   log.debug(("Sending %s request"):format(method), params)
 
-  local timeout_ms = require("lsp-file-operations").get_config().timeout_ms
-  local success, resp = pcall(client.request_sync, method, params, timeout_ms) ---@type boolean, { err?: lsp.ResponseError, result?: lsp.WorkspaceEdit }|nil|?
+  ---@type boolean, { err?: lsp.ResponseError, result?: lsp.WorkspaceEdit }|nil|?
+  local success, resp = pcall(
+    client.request_sync,
+    method,
+    params,
+    require("lsp-file-operations").get_config().timeout_ms
+  )
   if success and resp and resp.result then
     log.debug(("Got %s response"):format(method), resp)
     return resp.result
