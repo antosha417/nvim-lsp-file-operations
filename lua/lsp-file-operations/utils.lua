@@ -44,11 +44,10 @@ function M.client_notify(client, method, params)
     params = { params, { "table", "nil" }, true },
   })
 
-  if vim.fn.has("nvim-0.11") == 1 then
-    client:notify(method, params)
-  else
-    client.notify(method, params) ---@diagnostic disable-line:param-type-mismatch
-  end
+  pcall(function()
+    return vim.fn.has("nvim-0.11") == 1 and client:notify(method, params)
+      or client.notify(method, params) ---@diagnostic disable-line:param-type-mismatch
+  end)
 end
 
 ---@param T table
@@ -182,12 +181,11 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   log.debug(("Sending %s request"):format(method), params)
 
   ---@type boolean, { err?: lsp.ResponseError, result?: lsp.WorkspaceEdit }|nil|?
-  local success, resp = pcall(
-    client.request_sync,
-    method,
-    params,
-    require("lsp-file-operations").get_config().timeout_ms
-  )
+  local success, resp = pcall(function()
+    local args = { method, params, require("lsp-file-operations").get_config().timeout_ms }
+    return vim.fn.has("nvim-0.11") == 1 and client:request_sync(unpack(args))
+      or client.request_sync(unpack(args))
+  end)
   if success and resp and resp.result then
     log.debug(("Got %s response"):format(method), resp)
     return resp.result
