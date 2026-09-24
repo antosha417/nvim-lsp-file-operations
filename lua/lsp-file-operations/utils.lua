@@ -45,9 +45,8 @@ function M.client_notify(client, method, params)
   })
 
   pcall(function()
-    local args = { method, params }
-    return vim.fn.has("nvim-0.11") == 1 and client:notify(unpack(args))
-      or client.notify(unpack(args))
+    local args = { client, method, params }
+    return client.notify(unpack(args, vim.fn.has("nvim-0.11") == 1 and 1 or 2, #args))
   end)
 end
 
@@ -183,9 +182,8 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
 
   ---@type boolean, { err?: lsp.ResponseError, result?: lsp.WorkspaceEdit }|nil|?
   local success, resp = pcall(function()
-    local args = { method, params, require("lsp-file-operations").get_config().timeout_ms }
-    return vim.fn.has("nvim-0.11") == 1 and client:request_sync(unpack(args))
-      or client.request_sync(unpack(args))
+    local args = { client, method, params, require("lsp-file-operations").get_config().timeout_ms }
+    return client.request_sync(unpack(args, vim.fn.has("nvim-0.11") == 1 and 1 or 2, #args))
   end)
   if success and resp and resp.result then
     log.debug(("Got %s response"):format(method), resp)
