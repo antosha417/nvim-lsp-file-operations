@@ -1,6 +1,6 @@
 # nvim-lsp-file-operations
 
-`nvim-lsp-file-operations` is a Neovim plugin that adds support for file operations using built-in [LSP support](https://neovim.io/doc/user/lsp.html).
+`nvim-lsp-file-operations` is a Neovim plugin that adds support for file operations using [built-in LSP support](https://neovim.io/doc/user/lsp/).
 
 This plugin works by subscribing to events emitted by either of these plugins
 (other integrations may be added if needed):
@@ -15,16 +15,16 @@ This plugin works by subscribing to events emitted by either of these plugins
 
 ## Features
 
-Full implementation of all [`workspace.fileOperations`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) for the current LSP spec:
+Full implementation of all `workspace.fileOperations` for [the current LSP spec](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/):
 
-- [`workspace/DidCreate`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didCreateFiles)
-- [`workspace/DidDelete`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didDeleteFiles)
-- [`workspace/DidRename`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_didRenameFiles) - Tested in:
+- [`workspace/DidCreate`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#workspace_didCreateFiles)
+- [`workspace/DidDelete`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#workspace_didDeleteFiles)
+- [`workspace/DidRename`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#workspace_didRenameFiles) - Tested in:
   - [lua-language-server](https://github.com/LuaLS/lua-language-server)
   - [vtsls](https://github.com/yioneko/vtsls)
-- [`workspace/WillCreate`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willCreateFiles)
-- [`workspace/WillDelete`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willDeleteFiles)
-- [`workspace/WillRename`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_willRenameFiles) - Tested in:
+- [`workspace/WillCreate`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#workspace_willCreateFiles)
+- [`workspace/WillDelete`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#workspace_willDeleteFiles)
+- [`workspace/WillRename`](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.18/specification/#workspace_willRenameFiles) - Tested in:
   - [basedpyright](https://docs.basedpyright.com/latest)
   - [metals](https://scalameta.org/metals/)
   - [rust-analyzer](https://rust-analyzer.github.io/)
