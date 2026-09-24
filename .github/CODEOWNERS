@@ -1,4 +1,5 @@
 * @antosha417 @DrKJeff16 @sghng
+.busted @DrKJeff16
 .github/CODEOWNERS @DrKJeff16
 .github/workflows/* @DrKJeff16 @sghng
 .gitignore @antosha417 @sghng
@@ -6,6 +7,7 @@ LICENSE @antosha417
 Makefile @sghng @DrKJeff16
 README.md @antosha417 @DrKJeff16 @sghng
 lua/ @antosha417 @DrKJeff16 @sghng
+lua/lsp-file-operations/log.lua @DrKJeff16
 scripts/ @sghng @DrKJeff16
 stylua.toml @DrKJeff16 @sghng
 tests/ @sghng @DrKJeff16
