@@ -1,11 +1,15 @@
-.PHONY: test test-all format
+.PHONY: test test-all format clean all
+
+all: test-all
+
+clean:
+	@rm -rf .test-deps
 
 test:
-	nvim --headless -u tests/minimal_init.lua \
-		-c "PlenaryBustedDirectory tests/ { minimal_init = 'tests/minimal_init.lua' }"
+	@busted
 
 test-all:
-	./scripts/test-all.sh
+	@./scripts/test-all.sh
 
 format:
-	stylua .
+	@stylua .
