@@ -45,8 +45,9 @@ function M.client_notify(client, method, params)
   })
 
   pcall(function()
-    return vim.fn.has("nvim-0.11") == 1 and client:notify(method, params)
-      or client.notify(method, params) ---@diagnostic disable-line:param-type-mismatch
+    local args = { method, params }
+    return vim.fn.has("nvim-0.11") == 1 and client:notify(unpack(args))
+      or client.notify(unpack(args))
   end)
 end
 
