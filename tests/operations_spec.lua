@@ -2,11 +2,13 @@ local utils = require("lsp-file-operations.utils")
 local stub = require("luassert.stub")
 
 --- Build a fake LSP client.
----@param cap_key string|nil capability key under workspace.fileOperations (e.g. "didCreate")
----@param filters table|nil FileOperationFilter[] for the capability
+---@param cap_key? string capability key under workspace.fileOperations (e.g. "didCreate")
+---@param filters? lsp.FileOperationFilter[] for the capability
 ---@param response table|nil what request_sync should return (for will-* operations)
+---@return vim.lsp.Client client
 local function make_client(cap_key, filters, response)
-  local client = {
+  ---@diagnostic disable-next-line:missing-fields
+  local client = { ---@type vim.lsp.Client
     initialized = true,
     offset_encoding = "utf-16",
     server_capabilities = { workspace = { fileOperations = {} } },
@@ -18,21 +20,37 @@ local function make_client(cap_key, filters, response)
     client.server_capabilities.workspace.fileOperations[cap_key] =
       { filters = filters or { { pattern = { glob = "**/*.lua" } } } }
   end
-  -- Tolerates both call styles: client:notify(method, params) (>=0.11)
+  -- WARN: Does not tolerate both call styles: client:notify(method, params) (>=0.11)
   -- and client.notify(method, params) (legacy dot call, no self).
-  client.notify = function(a, b, c)
-    local method, params = c ~= nil and b or a, c ~= nil and c or b
-    table.insert(client.notify_calls, { method = method, params = params })
-  end
-  function client.request_sync(method, params, timeout_ms)
-    table.insert(
-      client.request_calls,
-      { method = method, params = params, timeout_ms = timeout_ms }
-    )
-    if client.response and client.response.err then
-      error(client.response.err)
+  -- Need to specify whether it is legacy or not!
+  if vim.fn.has("nvim-0.11") == 1 then
+    function client:notify(a, b, c)
+      table.insert(self.notify_calls, { method = c ~= nil and b or a, params = c or b })
     end
-    return client.response
+    function client:request_sync(method, params, timeout_ms)
+      table.insert(
+        self.request_calls,
+        { method = method, params = params, timeout_ms = timeout_ms }
+      )
+      if self.response and self.response.err then
+        error(self.response.err)
+      end
+      return self.response
+    end
+  else
+    function client.notify(a, b, c)
+      table.insert(client.notify_calls, { method = c ~= nil and b or a, params = c or b })
+    end
+    function client.request_sync(method, params, timeout_ms)
+      table.insert(
+        client.request_calls,
+        { method = method, params = params, timeout_ms = timeout_ms }
+      )
+      if client.response and client.response.err then
+        error(client.response.err)
+      end
+      return client.response
+    end
   end
   return client
 end
@@ -40,13 +58,13 @@ end
 --- Run one of the will-*/did-* module callbacks against the given fake clients.
 local function run_with_clients(module_name, clients, data)
   local get_clients = stub(utils, "get_clients").returns(clients)
-  local ok, err = pcall(require(module_name).callback, data)
+  local ok, err = pcall(require(module_name), data)
   get_clients:revert()
   assert(ok, err)
 end
 
 describe("did-* operations", function()
-  local fname = vim.fn.tempname() .. "/test.lua"
+  local fname = vim.fs.joinpath(vim.fn.tempname(), "test.lua")
 
   for _, case in ipairs({
     { module = "did-create", cap = "didCreate", method = "workspace/didCreateFiles" },
@@ -80,7 +98,7 @@ describe("did-* operations", function()
 
       it("skips uninitialized clients", function()
         local client = make_client(case.cap)
-        client.initialized = false
+        client.initialized = nil
         run_with_clients(mod, { client }, { fname = fname })
         assert.are.equal(0, #client.notify_calls)
       end)
@@ -128,11 +146,11 @@ describe("did-* operations", function()
 end)
 
 describe("will-* operations", function()
-  local fname = vim.fn.tempname() .. "/test.lua"
+  local fname = vim.fs.joinpath(vim.fn.tempname(), "test.lua")
   local edit = { changes = { ["file:///dummy"] = {} } }
 
   before_each(function()
-    require("lsp-file-operations").config = { timeout_ms = 1000 }
+    require("lsp-file-operations").set_config({ timeout_ms = 1000 })
   end)
 
   for _, case in ipairs({
