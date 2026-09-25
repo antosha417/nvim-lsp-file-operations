@@ -10,4 +10,4 @@ lua/ @antosha417 @DrKJeff16 @sghng
 lua/lsp-file-operations/log.lua @DrKJeff16
 scripts/ @sghng @DrKJeff16
 stylua.toml @DrKJeff16 @sghng
-tests/ @sghng @DrKJeff16
+spec/ @sghng @DrKJeff16
