@@ -86,8 +86,8 @@ end
 local function get_absolute_path(name)
   M.validate({ name = { name, { "string" } } })
 
-  local path = require("plenary").path:new(name)
-  return ensure_dir_trailing_slash(path:absolute(), path:is_dir()), path:is_dir()
+  local is_dir = vim.fn.isdirectory(name) == 1
+  return ensure_dir_trailing_slash(vim.fn.fnamemodify(name, ":p"), is_dir), is_dir
 end
 
 ---@param pattern lsp.FileOperationPattern

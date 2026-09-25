@@ -1,4 +1,5 @@
 local utils = require("lsp-file-operations.utils")
+local assert = require("luassert") --[[@as Luassert]]
 
 describe("utils.validate", function()
   it("accepts valid values", function()

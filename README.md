@@ -47,13 +47,12 @@ Full implementation of all `workspace.fileOperations` for [the current LSP spec]
 ```lua
 require("pckr").add({
   "antosha417/nvim-lsp-file-operations",
-  requires = {
-    "nvim-lua/plenary.nvim",
-    -- Uncomment whichever supported plugin(s) you use
-    -- "nvim-tree/nvim-tree.lua",
-    -- "nvim-neo-tree/neo-tree.nvim",
-    -- "simonmclean/triptych.nvim"
-  },
+  -- Uncomment whichever supported plugin(s) you use
+  -- requires = {
+  --   "nvim-tree/nvim-tree.lua",
+  --   "nvim-neo-tree/neo-tree.nvim",
+  --   "simonmclean/triptych.nvim"
+  -- },
   config = function()
     require("lsp-file-operations").setup()
   end,
@@ -66,13 +65,12 @@ require("pckr").add({
 return {
   {
     "antosha417/nvim-lsp-file-operations",
-    dependencies = {
-      "nvim-lua/plenary.nvim",
     -- Uncomment whichever supported plugin(s) you use
-    -- "nvim-tree/nvim-tree.lua",
-    -- "nvim-neo-tree/neo-tree.nvim",
-    -- "simonmclean/triptych.nvim"
-    },
+    -- dependencies = {
+    --   "nvim-tree/nvim-tree.lua",
+    --   "nvim-neo-tree/neo-tree.nvim",
+    --   "simonmclean/triptych.nvim"
+    -- },
     config = function()
       require("lsp-file-operations").setup()
     end,

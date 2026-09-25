@@ -1,5 +1,6 @@
 local utils = require("lsp-file-operations.utils")
 local stub = require("luassert.stub")
+local assert = require("luassert") --[[@as Luassert]]
 
 --- Build a fake LSP client.
 ---@param cap_key? string capability key under workspace.fileOperations (e.g. "didCreate")
@@ -27,6 +28,7 @@ local function make_client(cap_key, filters, response)
     function client:notify(a, b, c)
       table.insert(self.notify_calls, { method = c ~= nil and b or a, params = c or b })
     end
+
     function client:request_sync(method, params, timeout_ms)
       table.insert(
         self.request_calls,
@@ -41,6 +43,7 @@ local function make_client(cap_key, filters, response)
     function client.notify(a, b, c)
       table.insert(client.notify_calls, { method = c ~= nil and b or a, params = c or b })
     end
+
     function client.request_sync(method, params, timeout_ms)
       table.insert(
         client.request_calls,
