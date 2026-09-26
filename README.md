@@ -34,6 +34,15 @@ Full implementation of all `workspace.fileOperations` for [the current LSP spec]
 
 ---
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Setup](#setup)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## Installation
 
 > [!IMPORTANT]
@@ -42,7 +51,8 @@ Full implementation of all `workspace.fileOperations` for [the current LSP spec]
 > For example, `neo-tree.nvim` must load before `nvim-lsp-file-operations` for this to work,
 > so `nvim-lsp-file-operations` depends on `neo-tree.nvim`, not the other way around!
 
-### Using [pckr.nvim](https://github.com/lewis6991/pckr.nvim)
+<details>
+<summary>Using <a href="https://github.com/lewis6991/pckr.nvim">pckr.nvim</a></summary>
 
 ```lua
 require("pckr").add({
@@ -59,7 +69,9 @@ require("pckr").add({
 })
 ```
 
-### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
+</details>
+<details>
+<summary>Using <a href="https://github.com/folke.lazy.nvim">lazy.nvim</a></summary>
 
 ```lua
 return {
@@ -77,6 +89,8 @@ return {
   },
 }
 ```
+
+</details>
 
 ---
 
@@ -161,3 +175,9 @@ lspconfig.util.default_config = vim.tbl_extend(
 PRs are always welcome.
 
 This project uses [StyLua](https://github.com/JohnnyMorganz/StyLua). Please run `stylua .` before committing.
+
+---
+
+## License
+
+[Apache-2.0](https://github.com/antosha417/nvim-lsp-file-operations/blob/master/LICENSE)
