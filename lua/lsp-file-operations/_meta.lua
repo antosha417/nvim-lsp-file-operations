@@ -33,9 +33,10 @@
 ---@field willRenameFiles string[]
 
 ---@class (exact) LspFileOpsConfig
+---@field auto_save? boolean
 ---@field debug? boolean
----@field timeout_ms? integer
 ---@field operations? LspFileOpsConfig.Operations
+---@field timeout_ms? integer
 
 ---Non-legacy validation spec (>=v0.11)
 ---@class LspFileOps.ValidateSpec
