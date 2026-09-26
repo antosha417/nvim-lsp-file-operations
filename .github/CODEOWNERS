@@ -7,6 +7,8 @@ LICENSE @antosha417
 Makefile @sghng @DrKJeff16
 README.md @antosha417 @DrKJeff16 @sghng
 lua/ @antosha417 @DrKJeff16 @sghng
+lua/lsp-file-operations/_meta.lua @DrKJeff16
+lua/lsp-file-operations/config.lua @DrKJeff16
 lua/lsp-file-operations/log.lua @DrKJeff16
 scripts/ @sghng @DrKJeff16
 stylua.toml @DrKJeff16 @sghng
