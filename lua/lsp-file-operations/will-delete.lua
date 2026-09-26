@@ -15,9 +15,9 @@ return function(data)
         { "server_capabilities", "workspace", "fileOperations", "willDelete" }
       )
       if will_delete and utils.matches_filters(will_delete.filters or {}, data.fname) then
-        local edit = utils.get_workspace_edit("willDeleteFiles", client, data.fname)
-        if edit then
-          require("lsp-file-operations.log").debug("Applying workspace/willDeleteFiles edit", edit)
+        local edit, method = utils.get_workspace_edit("willDeleteFiles", client, data.fname)
+        if edit and method then
+          require("lsp-file-operations.log").debug(("Applying %s edit"):format(method), edit)
           vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
         end
       end

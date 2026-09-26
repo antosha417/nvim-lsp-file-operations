@@ -16,10 +16,10 @@ return function(data)
         { "server_capabilities", "workspace", "fileOperations", "willRename" }
       )
       if will_rename and utils.matches_filters(will_rename.filters or {}, data.old_name) then
-        local edit =
+        local edit, method =
           utils.get_workspace_edit("willRenameFiles", client, data.old_name, data.new_name)
-        if edit then
-          require("lsp-file-operations.log").debug("Applying workspace/willRenameFiles edit", edit)
+        if edit and method then
+          require("lsp-file-operations.log").debug(("Applying %s edit"):format(method), edit)
           vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
         end
       end

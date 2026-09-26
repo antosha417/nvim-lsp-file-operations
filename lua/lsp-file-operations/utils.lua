@@ -197,8 +197,9 @@ function M.matches_filters(filters, name)
 end
 
 ---@return lsp.WorkspaceEdit|nil|? workspace_edit
----@overload fun(request: "willCreateFiles"|"willDeleteFiles", client: vim.lsp.Client, fname: string): workspace_edit: lsp.WorkspaceEdit|nil|?
----@overload fun(request: "willRenameFiles", client: vim.lsp.Client, old_name: string, new_name: string): workspace_edit: lsp.WorkspaceEdit|nil|?
+---@return string|nil|? method
+---@overload fun(request: "willCreateFiles"|"willDeleteFiles", client: vim.lsp.Client, fname: string): workspace_edit: lsp.WorkspaceEdit|nil|?, method: string|nil|?
+---@overload fun(request: "willRenameFiles", client: vim.lsp.Client, old_name: string, new_name: string): workspace_edit: lsp.WorkspaceEdit|nil|?, method: string|nil|?
 function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   M.validate({
     request = { request, { "string" } },
@@ -229,11 +230,11 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   ---@type boolean, { err?: lsp.ResponseError, result?: lsp.WorkspaceEdit }|nil|?
   local success, resp = pcall(function()
     local args = { client, method, params, require("lsp-file-operations").get_config().timeout_ms }
-    return client.request_sync(unpack(args, vim.fn.has("nvim-0.11") == 1 and 1 or 2, #args))
+    return client.request_sync(unpack(args, vim.fn.has("nvim-0.11") == 1 and 1 or 2, #args)), method
   end)
   if success and resp and resp.result then
     Log.debug(("Got response for `%s`"):format(method), resp)
-    return resp.result
+    return resp.result, method
   end
 
   if not success then

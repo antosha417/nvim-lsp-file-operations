@@ -17,7 +17,7 @@ local assert = require("luassert")
 --- Build a fake LSP client.
 ---@param cap_key? string capability key under workspace.fileOperations (e.g. "didCreate")
 ---@param filters? lsp.FileOperationFilter[] for the capability
----@param response table|nil what request_sync should return (for will-* operations)
+---@param response? table what request_sync should return (for will-* operations)
 ---@return LspFileOps.Spec.Client client
 local function make_client(cap_key, filters, response)
   ---@diagnostic disable-next-line:missing-fields
@@ -71,10 +71,12 @@ local function make_client(cap_key, filters, response)
         client.request_calls,
         { method = method, params = params, timeout_ms = timeout_ms }
       )
+      if client.response and not client.response.err then
+        return client.response
+      end
       if client.response and client.response.err then
         error(client.response.err)
       end
-      return client.response
     end
   end
   return client

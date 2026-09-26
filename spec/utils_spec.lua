@@ -14,6 +14,12 @@ describe("utils.validate", function()
     end)
   end)
 
+  it("accepts nil value when only optional flag set to true", function()
+    assert.has_no.errors(function()
+      utils.validate({ name = { nil, { "table" }, true } })
+    end)
+  end)
+
   it("respects the optional flag", function()
     assert.has_no.errors(function()
       utils.validate({ name = { nil, { "table", "nil" }, true } })

@@ -1,6 +1,6 @@
 ---@alias LspFileOps.DidRename fun(data: { new_name: string, old_name: string })
 
----@param data { old_name: string, new_name: string }
+---@param data { new_name: string, old_name: string }
 return function(data)
   local utils = require("lsp-file-operations.utils")
   utils.validate({
