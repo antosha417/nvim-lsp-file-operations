@@ -7,6 +7,7 @@ local M = {}
 
 M.get_config = Config.get
 M.set_config = Config.set
+M.setup = Config.setup
 
 ---The extra client capabilities provided by this plugin. To be merged with
 ---`vim.lsp.protocol.make_client_capabilities()` and sent to the LSP server.
@@ -26,8 +27,6 @@ function M.default_capabilities()
   end
   return result
 end
-
-M.setup = Config.setup
 
 return M
 -- vim: set ts=2 sts=2 sw=2 et ai si sta:
