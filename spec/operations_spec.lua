@@ -1,15 +1,27 @@
 local utils = require("lsp-file-operations.utils")
 local stub = require("luassert.stub")
-local assert = require("luassert") --[[@as Luassert]]
+local assert = require("luassert")
+
+---@class LspFileOps.Spec.ClientNotifyCall
+---@field method vim.lsp.protocol.Method.ClientToServer.Request
+---@field params? table
+
+---@class LspFileOps.Spec.ClientRequestCall: LspFileOps.Spec.ClientNotifyCall
+---@field params table
+---@field timeout_ms? integer
+
+---@class LspFileOps.Spec.Client: vim.lsp.Client
+---@field notify_calls LspFileOps.Spec.ClientNotifyCall[]
+---@field request_calls LspFileOps.Spec.ClientRequestCall[]
 
 --- Build a fake LSP client.
 ---@param cap_key? string capability key under workspace.fileOperations (e.g. "didCreate")
 ---@param filters? lsp.FileOperationFilter[] for the capability
 ---@param response table|nil what request_sync should return (for will-* operations)
----@return vim.lsp.Client client
+---@return LspFileOps.Spec.Client client
 local function make_client(cap_key, filters, response)
   ---@diagnostic disable-next-line:missing-fields
-  local client = { ---@type vim.lsp.Client
+  local client = { ---@type LspFileOps.Spec.Client
     initialized = true,
     offset_encoding = "utf-16",
     server_capabilities = { workspace = { fileOperations = {} } },
@@ -25,10 +37,15 @@ local function make_client(cap_key, filters, response)
   -- and client.notify(method, params) (legacy dot call, no self).
   -- Need to specify whether it is legacy or not!
   if vim.fn.has("nvim-0.11") == 1 then
-    function client:notify(a, b, c)
-      table.insert(self.notify_calls, { method = c ~= nil and b or a, params = c or b })
+    ---@param method vim.lsp.protocol.Method.ClientToServer.Request
+    ---@param params? table
+    function client:notify(method, params)
+      table.insert(self.notify_calls, { method = method, params = params })
     end
 
+    ---@param method vim.lsp.protocol.Method.ClientToServer.Request
+    ---@param params table
+    ---@param timeout_ms? integer
     function client:request_sync(method, params, timeout_ms)
       table.insert(
         self.request_calls,
@@ -40,10 +57,15 @@ local function make_client(cap_key, filters, response)
       return self.response
     end
   else
-    function client.notify(a, b, c)
-      table.insert(client.notify_calls, { method = c ~= nil and b or a, params = c or b })
+    ---@param method vim.lsp.protocol.Method.ClientToServer.Request
+    ---@param params? table
+    function client.notify(method, params)
+      table.insert(client.notify_calls, { method = method, params = params })
     end
 
+    ---@param method vim.lsp.protocol.Method.ClientToServer.Request
+    ---@param params table
+    ---@param timeout_ms? integer
     function client.request_sync(method, params, timeout_ms)
       table.insert(
         client.request_calls,
@@ -88,7 +110,7 @@ describe("did-* operations", function()
       end)
 
       it("does not notify clients lacking the capability", function()
-        local client = make_client(nil)
+        local client = make_client()
         run_with_clients(mod, { client }, { fname = fname })
         assert.are.equal(0, #client.notify_calls)
       end)
@@ -109,9 +131,7 @@ describe("did-* operations", function()
   end
 
   describe("did-rename", function()
-    local old_name = fname
-    local new_name = fname .. ".bak"
-
+    local old_name, new_name = fname, fname .. ".bak"
     it("sends oldUri and newUri", function()
       local client = make_client("didRename")
       run_with_clients(
@@ -127,7 +147,7 @@ describe("did-* operations", function()
     end)
 
     it("does not notify clients lacking the capability", function()
-      local client = make_client(nil)
+      local client = make_client()
       run_with_clients(
         "lsp-file-operations.did-rename",
         { client },
@@ -202,8 +222,7 @@ describe("will-* operations", function()
   end
 
   describe("will-rename", function()
-    local old_name = fname
-    local new_name = fname .. ".bak"
+    local old_name, new_name = fname, fname .. ".bak"
 
     it("sends oldUri and newUri and applies the edit", function()
       local client = make_client("willRename", nil, { result = edit })

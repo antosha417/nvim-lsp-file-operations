@@ -1,5 +1,5 @@
 local utils = require("lsp-file-operations.utils")
-local assert = require("luassert") --[[@as Luassert]]
+local assert = require("luassert")
 
 describe("utils.validate", function()
   it("accepts valid values", function()
@@ -62,36 +62,40 @@ describe("utils.matches_filters", function()
   end)
 
   it("matches a file glob", function()
-    local file = tmpdir .. "/test.lua"
+    local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
-    local filters = { { pattern = { glob = "**/*.lua" } } }
-    assert.is_true(utils.matches_filters(filters, file))
+    assert.is_true(utils.matches_filters({ { pattern = { glob = "**/*.lua" } } }, file))
   end)
 
   it("does not match a non-matching glob", function()
-    local file = tmpdir .. "/test.lua"
+    local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
-    local filters = { { pattern = { glob = "**/*.py" } } }
-    assert.is_falsy(utils.matches_filters(filters, file))
+    assert.is_falsy(utils.matches_filters({ { pattern = { glob = "**/*.py" } } }, file))
   end)
 
   it("respects matches = 'file' (excludes directories)", function()
-    local filters = { { pattern = { glob = "**/*", matches = "file" } } }
-    assert.is_falsy(utils.matches_filters(filters, tmpdir))
+    assert.is_falsy(
+      utils.matches_filters({ { pattern = { glob = "**/*", matches = "file" } } }, tmpdir)
+    )
   end)
 
   it("respects matches = 'folder' (excludes files)", function()
-    local file = tmpdir .. "/test.lua"
+    local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
-    local filters = { { pattern = { glob = "**/*", matches = "folder" } } }
-    assert.is_falsy(utils.matches_filters(filters, file))
+    assert.is_falsy(
+      utils.matches_filters({ { pattern = { glob = "**/*", matches = "folder" } } }, file)
+    )
   end)
 
   it("honors ignoreCase option", function()
-    local file = tmpdir .. "/Test.LUA"
+    local file = vim.fs.joinpath(tmpdir, "Test.LUA")
     vim.fn.writefile({}, file)
-    local filters = { { pattern = { glob = "**/*.lua", options = { ignoreCase = true } } } }
-    assert.is_true(utils.matches_filters(filters, file))
+    assert.is_true(
+      utils.matches_filters(
+        { { pattern = { glob = "**/*.lua", options = { ignoreCase = true } } } },
+        file
+      )
+    )
   end)
 
   it("returns falsy for an empty filter list", function()
@@ -99,17 +103,16 @@ describe("utils.matches_filters", function()
   end)
 
   it("matches if ANY filter matches (OR semantics)", function()
-    local file = tmpdir .. "/test.lua"
+    local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
-    local filters = {
+    assert.is_true(utils.matches_filters({
       { pattern = { glob = "**/*.py" } },
       { pattern = { glob = "**/*.lua" } },
-    }
-    assert.is_true(utils.matches_filters(filters, file))
+    }, file))
   end)
 
   it("matches directory globs like '**/' against folders only", function()
-    local file = tmpdir .. "/test.lua"
+    local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
     local filters = { { pattern = { glob = "**/" } } }
     assert.is_true(utils.matches_filters(filters, tmpdir))
@@ -118,7 +121,7 @@ describe("utils.matches_filters", function()
 
   it("restores the global ignorecase option after matching", function()
     vim.o.ignorecase = true
-    local file = tmpdir .. "/test.lua"
+    local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
     utils.matches_filters({ { pattern = { glob = "**/*.lua" } } }, file)
     assert.is_true(vim.o.ignorecase)
