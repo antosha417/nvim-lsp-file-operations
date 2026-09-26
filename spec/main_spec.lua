@@ -15,7 +15,6 @@ describe("lsp-file-operations", function()
 
     it("enables all six file operations by default (before setup)", function()
       lfo.set_config(nil)
-      local caps = lfo.default_capabilities()
       assert.are.same({
         workspace = {
           fileOperations = {
@@ -27,7 +26,7 @@ describe("lsp-file-operations", function()
             willRename = true,
           },
         },
-      }, caps)
+      }, lfo.default_capabilities())
     end)
 
     it("reflects operations disabled in the config", function()

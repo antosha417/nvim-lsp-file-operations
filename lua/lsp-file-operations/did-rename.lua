@@ -1,4 +1,4 @@
----@alias LspFileOps.DidRename fun(data: { old_name: string, new_name: string })
+---@alias LspFileOps.DidRename fun(data: { new_name: string, old_name: string })
 
 ---@param data { old_name: string, new_name: string }
 return function(data)

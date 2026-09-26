@@ -75,12 +75,12 @@ local function gen_log_func(level)
         local arg = select(i, ...)
         msg = ("%s %s"):format(
           msg,
-          arg == nil and ""
+          arg == nil and "nil"
             or (
               type(arg) == "string" and arg
               or (
                 (type(arg) == "number" or type(arg) == "boolean") and tostring(arg)
-                or vim.inspect(arg)
+                or vim.inspect(arg, { newline = " ", indent = "" })
               )
             )
         )
