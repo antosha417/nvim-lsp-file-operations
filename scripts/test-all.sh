@@ -47,5 +47,7 @@ if [ "$failed" -ne 0 ]; then
   echo "==> Some Neovim versions FAILED" >&2
   exit 1
 fi
-echo "==> All Neovim versions passed"
+
+echo -e "\n==> All Neovim versions passed"
+exit 0
 # vim: set ts=2 sts=2 sw=2 et ft=bash:

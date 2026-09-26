@@ -184,15 +184,15 @@ function M.matches_filters(filters, name)
     name = { name, { "string" } },
   })
 
-  local log = require("lsp-file-operations.log")
+  local Log = require("lsp-file-operations.log")
   local absolute_path, is_dir = get_absolute_path(name)
   for _, filter in pairs(filters) do
     if match_filter(filter, absolute_path, is_dir) then
-      log.debug("Path did match the filter", absolute_path, filter)
+      Log.debug("Path did match the filter", absolute_path, filter)
       return true
     end
   end
-  log.debug("Path didn't match any filters", absolute_path, filters)
+  Log.debug("Path didn't match any filters", absolute_path, filters)
   return false
 end
 
@@ -214,7 +214,7 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
     return
   end
 
-  local log = require("lsp-file-operations.log")
+  local Log = require("lsp-file-operations.log")
   local params = {
     files = {
       request == "willRenameFiles" and {
@@ -224,7 +224,7 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
     },
   }
   local method = ("workspace/%s"):format(request)
-  log.debug(("Sending %s request"):format(method), params)
+  Log.debug(("Sending %s request"):format(method), params)
 
   ---@type boolean, { err?: lsp.ResponseError, result?: lsp.WorkspaceEdit }|nil|?
   local success, resp = pcall(function()
@@ -232,14 +232,14 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
     return client.request_sync(unpack(args, vim.fn.has("nvim-0.11") == 1 and 1 or 2, #args))
   end)
   if success and resp and resp.result then
-    log.debug(("Got %s response"):format(method), resp)
+    Log.debug(("Got response for `%s`"):format(method), resp)
     return resp.result
   end
 
   if not success then
-    log.error(("Error while sending (%s) request"):format(method), resp)
+    Log.error(("Error while sending request for `%s`"):format(method), resp)
   elseif not (resp and resp.result) then
-    log.warn(("Got empty %s response, maybe a timeout?"):format(method))
+    Log.warn(("Got empty response for `%s`"):format(method))
   end
 end
 
