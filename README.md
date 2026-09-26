@@ -39,6 +39,10 @@ Full implementation of all `workspace.fileOperations` for [the current LSP spec]
 - [Installation](#installation)
 - [Setup](#setup)
   - [LSP Capabilities](#lsp-capabilities)
+- [API](#api)
+  - [`create()`](#create)
+  - [`delete()`](#delete)
+  - [`rename()`](#rename)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -192,6 +196,37 @@ lspconfig.util.default_config = vim.tbl_deep_extend(
 ```
 
 </details>
+
+---
+
+## API
+
+You can also trigger any of these events manually from the main module.
+Credits to [@Crysthamus](https://github.com/Crysthamus/nvim-file-operations) as the implementation was based on theirs.
+
+### `create()`
+
+You can now trigger a workspace event for file creation (`willCreate` and `didCreate`):
+
+```lua
+require("lsp-file-operations").create({ fname = "<PATH/TO/FILE>" })
+```
+
+### `delete()`
+
+You can now trigger a workspace event for file deletion (`willDelete` and `didDelete`):
+
+```lua
+require("lsp-file-operations").delete({ fname = "<PATH/TO/FILE>" })
+```
+
+### `rename()`
+
+You can now trigger a workspace event for file renaming (`willRename` and `didRename`):
+
+```lua
+require("lsp-file-operations").rename({ old_name = "<PATH/TO/OLD_FILE>", new_name = "<PATH/TO/NEW_FILE>" })
+```
 
 ---
 
