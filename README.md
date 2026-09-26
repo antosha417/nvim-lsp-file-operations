@@ -97,14 +97,19 @@ return {
 
 ## Setup
 
+Simply call:
+
 ```lua
 require("lsp-file-operations").setup()
 ```
 
-This is equivalent to:
+The default options are:
 
 ```lua
-require("lsp-file-operations").setup {
+{
+  -- If `true`, allows the plugin to handle auto-saving after making LSP operations
+  auto_save = false,
+
   -- Used to see debug logs, located at `vim.fn.stdpath("cache") .. "/lsp-file-operations.log"`
   debug = false,
 

@@ -3,6 +3,52 @@
 ---@class LspFileOps.Utils
 local M = {}
 
+---Get rid of all duplicates in input table.
+---
+---If table is empty, it'll just return it as-is.
+---
+---If the data passed to the function is not a table,
+---an error will be raised.
+--- ---
+---@generic T: table
+---@param T T
+---@param key? string|integer
+---@return T NT
+---@nodiscard
+function M.dedup(T, key)
+  M.validate({
+    T = { T, { "table" } },
+    key = { key, { "string", "nil" }, true },
+  })
+  key = (key and key ~= "") and key or nil
+  if vim.tbl_isempty(T) then
+    return T
+  end
+
+  local names, NT = {}, {}
+  for k, v in pairs(T) do
+    local not_dup = false
+    if (type(v) == "table" and not key) or type(v) ~= "table" then
+      not_dup = not vim.tbl_contains(NT, function(val)
+        return vim.deep_equal(val, v)
+      end, { predicate = true })
+    elseif type(v) == "table" and key then
+      not_dup = not vim.tbl_contains(names, function(val)
+        return vim.deep_equal(val, v[key])
+      end, { predicate = true })
+      if not_dup then
+        table.insert(names, v[key])
+      end
+    end
+    if not_dup and vim.islist(T) then
+      table.insert(NT, v)
+    elseif not_dup then
+      NT[k] = v
+    end
+  end
+  return NT
+end
+
 ---Dynamic `vim.validate()` wrapper. Covers both legacy and newer implementations.
 --- ---
 ---@param T table<string, vim.validate.Spec|LspFileOps.ValidateSpec>
