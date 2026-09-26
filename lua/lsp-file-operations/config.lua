@@ -1,6 +1,7 @@
 ---@module "lsp-file-operations._meta"
 
 local Utils = require("lsp-file-operations.utils")
+local Log = require("lsp-file-operations.log")
 
 local default_config = { ---@type LspFileOpsConfig
   auto_save = false,
@@ -22,24 +23,26 @@ local config = nil ---@type LspFileOpsConfig|nil|?
 ---
 ---Sourced from `nvim-file-operations`, all credits go to @Crysthamus.
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations/autosave.lua
----@param uris string[]
-local function save_buffers(uris)
-  vim.schedule(function()
-    for _, uri in ipairs(uris) do
-      local bufnr = vim.uri_to_bufnr(uri)
-      if
-        vim.api.nvim_buf_is_valid(bufnr)
-        and vim.api.nvim_buf_is_loaded(bufnr)
-        and vim.api.nvim_get_option_value("modified", { buf = bufnr })
-      then
-        vim.api.nvim_buf_call(bufnr, function()
-          vim.cmd.update({ mods = { silent = true } })
+---@type fun(uris: string[])
+local save_buffers = vim.schedule_wrap(function(uris) ---@param uris string[]
+  Utils.validate({ uris = { uris, { "table" } } })
+
+  for _, uri in ipairs(uris) do
+    local bufnr = vim.uri_to_bufnr(uri)
+    if
+      vim.api.nvim_buf_is_valid(bufnr)
+      and vim.api.nvim_buf_is_loaded(bufnr)
+      and vim.api.nvim_get_option_value("modified", { buf = bufnr })
+    then
+      vim.api.nvim_buf_call(bufnr, function()
+        if pcall(vim.cmd.update, { mods = { silent = true } }) then
+          Log.debug("Successfully auto-saved buffer", bufnr, "after file operation")
           vim.cmd.checktime()
-        end)
-      end
+        end
+      end)
     end
-  end)
-end
+  end
+end)
 
 ---Parses an incoming LSP WorkspaceEdit structure and extracts modified files
 ---
@@ -48,27 +51,22 @@ end
 ---@param workspace_edit lsp.WorkspaceEdit The standard LSP WorkspaceEdit object payload
 ---@return string[] uris Array of unique URIs
 local function extract_uris(workspace_edit)
+  Utils.validate({ workspace_edit = { workspace_edit, { "table" } } })
+
   local uris = {} ---@type string[]
-  if workspace_edit then
-    local seen = {} ---@type table<string, boolean>
-    if workspace_edit.changes then
-      for uri in pairs(workspace_edit.changes) do
-        if not seen[uri] then
-          seen[uri] = true
-          table.insert(uris, uri)
-        end
-      end
+  if not workspace_edit then
+    return uris
+  end
+
+  if workspace_edit.changes then
+    for uri in pairs(workspace_edit.changes) do
+      table.insert(uris, uri)
     end
-    if workspace_edit.documentChanges then
-      for _, change in ipairs(workspace_edit.documentChanges) do
-        if
-          change.textDocument
-          and change.textDocument.uri
-          and not seen[change.textDocument.uri]
-        then
-          seen[change.textDocument.uri] = true
-          table.insert(uris, change.textDocument.uri)
-        end
+  end
+  if workspace_edit.documentChanges then
+    for _, change in ipairs(workspace_edit.documentChanges) do
+      if change.textDocument and change.textDocument.uri then
+        table.insert(uris, change.textDocument.uri)
       end
     end
   end
@@ -124,7 +122,7 @@ end
 ---@param cfg? LspFileOpsConfig
 function M.set(cfg)
   config = cfg
-  require("lsp-file-operations.log").debug("Config modified to", config)
+  Log.debug("Config modified to", config)
 end
 
 ---@param opts? LspFileOpsConfig
@@ -141,7 +139,6 @@ function M.setup(opts)
 
   config = vim.tbl_deep_extend("force", default_config, opts)
 
-  local Log = require("lsp-file-operations.log")
   if config.debug then
     Log.level = "debug"
   end
@@ -150,19 +147,14 @@ function M.setup(opts)
   if ok_nvim_tree and nvim_tree_api then -- nvim-tree integration
     Log.debug("Setting up nvim-tree integration")
 
+    local ev = nvim_tree_api.events.Event
     setup_events({
-      didCreateFiles = {
-        nvim_tree_api.events.Event.FileCreated,
-        nvim_tree_api.events.Event.FolderCreated,
-      },
-      didDeleteFiles = {
-        nvim_tree_api.events.Event.FileRemoved,
-        nvim_tree_api.events.Event.FolderRemoved,
-      },
-      didRenameFiles = { nvim_tree_api.events.Event.NodeRenamed },
-      willCreateFiles = { nvim_tree_api.events.Event.WillCreateFile },
-      willDeleteFiles = { nvim_tree_api.events.Event.WillRemoveFile },
-      willRenameFiles = { nvim_tree_api.events.Event.WillRenameNode },
+      didCreateFiles = { ev.FileCreated, ev.FolderCreated },
+      didDeleteFiles = { ev.FileRemoved, ev.FolderRemoved },
+      didRenameFiles = { ev.NodeRenamed },
+      willCreateFiles = { ev.WillCreateFile },
+      willDeleteFiles = { ev.WillRemoveFile },
+      willRenameFiles = { ev.WillRenameNode },
     }, function(module, event)
       nvim_tree_api.events.subscribe(
         event,
