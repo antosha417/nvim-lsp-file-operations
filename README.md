@@ -155,7 +155,7 @@ If you use [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig) you can co
 local lspconfig = require("lspconfig")
 
 -- Set global defaults for all servers
-lspconfig.util.default_config = vim.tbl_extend(
+lspconfig.util.default_config = vim.tbl_deep_extend(
   "force",
   lspconfig.util.default_config,
   {
