@@ -92,6 +92,23 @@ return {
 ```
 
 </details>
+<details>
+<summary>Using <a href="https://neovim.io/doc/user/pack/#_plugin-manager"><code>vim.pack</code></a></summary>
+
+```lua
+vim.pack.add({
+  { src = "https://github.com/antosha417/nvim-lsp-file-operations" },
+
+  -- Uncomment whichever supported plugin(s) you use
+  -- { src = "https://github.com/nvim-tree/nvim-tree.lua" },
+  -- { src = "https://github.com/nvim-neo-tree/neo-tree.nvim" },
+  -- { src = "https://github.com/simonmclean/triptych.nvim" },
+})
+
+require("lsp-file-operations").setup()
+```
+
+</details>
 
 ---
 
