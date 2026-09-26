@@ -111,6 +111,8 @@ function M.rename(opts)
   return true
 end
 
+---Sourced from `Crysthamus/nvim-file-operations`:
+---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
 ---@param opts { fname: string }
 ---@return boolean success
 function M.delete(opts)
@@ -155,6 +157,8 @@ function M.delete(opts)
   return true
 end
 
+---Sourced from `Crysthamus/nvim-file-operations`:
+---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
 ---@param opts { fname: string }
 ---@return boolean success
 function M.create(opts)
