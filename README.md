@@ -44,6 +44,7 @@ Full implementation of all `workspace.fileOperations` for [the current LSP spec]
   - [`delete()`](#delete)
   - [`rename()`](#rename)
 - [Contributing](#contributing)
+- [Credits](#credits)
 - [License](#license)
 
 ---
@@ -235,6 +236,12 @@ require("lsp-file-operations").rename({ old_name = "<PATH/TO/OLD_FILE>", new_nam
 PRs are always welcome.
 
 This project uses [StyLua](https://github.com/JohnnyMorganz/StyLua). Please run `stylua .` before committing.
+
+---
+
+## Credits
+
+- [Crysthamus/nvim-file-operations](https://github.com/Crysthamus/nvim-file-operations)
 
 ---
 
