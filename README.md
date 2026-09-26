@@ -38,6 +38,7 @@ Full implementation of all `workspace.fileOperations` for [the current LSP spec]
 
 - [Installation](#installation)
 - [Setup](#setup)
+  - [LSP Capabilities](#lsp-capabilities)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -121,6 +122,8 @@ require("lsp-file-operations").setup {
   timeout_ms = 10000,
 }
 ```
+
+### LSP Capabilities
 
 Some LSP servers also expect to be informed about the extended client capabilities.
 Follow any of the instructions below based on your Neovim version:
