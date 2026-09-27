@@ -209,7 +209,7 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   })
 
   if
-    not vim.tbl_contains({ "willCreateFiles", "willDeleteFiles", "willRenameFiles" }, request)
+    not vim.list_contains({ "willCreateFiles", "willDeleteFiles", "willRenameFiles" }, request)
     or (request == "willRenameFiles" and not new_name)
   then -- Abort on invalid/incomplete parameters
     return

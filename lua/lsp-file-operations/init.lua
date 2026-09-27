@@ -197,8 +197,7 @@ function M.create(opts)
 
   mod({ fname = fname })
 
-  ok = pcall(vim.cmd.edit, vim.fn.fnameescape(fname))
-  return ok
+  return (pcall(vim.cmd.edit, vim.fn.fnameescape(fname)))
 end
 
 return M
