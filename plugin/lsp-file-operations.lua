@@ -28,8 +28,8 @@ end, {
       trimempty = false,
     }))
     local items = {} ---@type string[]
-    if args[1]:sub(-1) ~= "!" then
-      if #args == 2 then
+    if args[1]:sub(-1) ~= "!" then -- Don't trigger completions if user command is called with a "bang"
+      if #args == 2 then -- Complete the second word
         for _, item in ipairs({ "create", "delete", "rename" }) do
           if vim.startswith(item, args[#args]) then
             table.insert(items, item)
