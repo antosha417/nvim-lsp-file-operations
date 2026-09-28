@@ -244,4 +244,14 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   end
 end
 
+---@generic T: table, V
+---@param t T
+---@param k string|integer
+---@param v V
+---@return V v
+function M.rawset(t, k, v)
+  rawset(t, k, v)
+  return v
+end
+
 return M
