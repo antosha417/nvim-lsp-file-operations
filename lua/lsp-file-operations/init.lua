@@ -74,14 +74,15 @@ function M.rename(opts)
   local old_name = opts.old_name or vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
   local new_name = opts.new_name
   if new_name == "" or old_name == "" then
-    return false
+    Log.error("Either `new_name` or `old_name` for `rename()` are empty")
+    error("Either `new_name` or `old_name` for `rename()` are empty")
   end
   old_name, new_name = vim.fn.fnamemodify(old_name, ":p"), vim.fn.fnamemodify(new_name, ":p")
 
   local ok, mod = pcall(require, "lsp-file-operations.will-rename")
   if not (ok and mod) then
     Log.error("Unable to find `lsp-file-operations.will-rename`!")
-    return false
+    error("Unable to find `lsp-file-operations.will-rename`!")
   end
   mod({ new_name = new_name, old_name = old_name })
 
