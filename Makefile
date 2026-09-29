@@ -1,15 +1,20 @@
-.PHONY: test test-all format clean all
+.PHONY: test test-all format clean all help
 
-all: test-all
+all: help
 
-clean:
+clean: ## Clean auto-generated artifacts
 	@rm -rf .test-deps
 
-test:
+format: ## Format using StyLua
+	@stylua .
+
+help: ## Print this help message
+	@echo -e "Usage: make [target]\n\nAvailable targets:"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo
+
+test: ## Test against the current Neovim version using busted
 	@busted
 
-test-all:
+test-all: ## Test against different Neovim versions using busted
 	@./scripts/test-all.sh
-
-format:
-	@stylua .
