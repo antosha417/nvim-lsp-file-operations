@@ -24,8 +24,8 @@ vim.api.nvim_create_user_command("LFO", function(ctx)
     Log.error("`:LFO create` only accepts one argument (and must not be empty)")
     error("`:LFO create` only accepts one argument (and must not be empty)")
   elseif ctx.fargs[1] == "delete" and #ctx.fargs ~= 2 or ctx.fargs[2] == "" then
-    Log.error("`:LFO create` only accepts one argument (and must not be empty)")
-    error("`:LFO create` only accepts one argument (and must not be empty)")
+    Log.error("`:LFO delete` only accepts one argument (and must not be empty)")
+    error("`:LFO delete` only accepts one argument (and must not be empty)")
   elseif ctx.fargs[1] == "rename" and #ctx.fargs < 2 or #ctx.fargs > 3 then
     Log.error("`:LFO rename` only accepts either one or two arguments")
     error("`:LFO rename` only only accepts either one or two arguments")
