@@ -1,0 +1,41 @@
+base: lua51
+name: vim
+globals:
+  os:
+    any: true
+  a:
+    any: true
+  jit:
+    any: true
+  bit:
+    any: true
+  vim:
+    any: true
+  assert:
+    args:
+      - type: bool
+      - type: string
+        required: false
+  after_each:
+    args:
+      - type: function
+  before_each:
+    args:
+      - type: function
+  describe:
+    args:
+      - type: string
+      - type: function
+  it:
+    args:
+      - type: string
+      - type: function
+  table:
+    any: true
+  string:
+    any: true
+  math:
+    any: true
+  io:
+    any: true
+# vim: set ts=2 sts=2 sw=2 et ai si sta:
