@@ -39,6 +39,7 @@ Full implementation of all `workspace.fileOperations` for [the current LSP spec]
 - [Installation](#installation)
 - [Setup](#setup)
   - [LSP Capabilities](#lsp-capabilities)
+- [User Command](#user-command)
 - [API](#api)
   - [`create()`](#create)
   - [`delete()`](#delete)
@@ -197,6 +198,22 @@ lspconfig.util.default_config = vim.tbl_deep_extend(
 ```
 
 </details>
+
+---
+
+## User Command
+
+> [!NOTE]
+> _The command comes with `<Tab>` completion aswell._
+
+This plugin comes with the `:LFO` user command:
+
+```vim
+:LFO create <PATH/TO/FILE>                         " Create a file in the current workspace
+:LFO delete <PATH/TO/FILE>                         " Delete a file in the current workspace
+:LFO rename <PATH/TO/NEW_FILE>                     " Rename the current buffer's file to the new path
+:LFO rename <PATH/TO/OLD_FILE> <PATH/TO/NEW_FILE>  " Rename an existing file path to a new path
+```
 
 ---
 
