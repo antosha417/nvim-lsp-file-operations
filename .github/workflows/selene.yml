@@ -1,0 +1,28 @@
+name: Selene Lint
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/selene.yml"
+      - "lua/lsp-file-operations/*.lua"
+      - "selene.toml"
+      - "vim.yml"
+  pull_request:
+    paths:
+      - ".github/workflows/selene.yml"
+      - "lua/lsp-file-operations/*.lua"
+      - "selene.toml"
+      - "vim.yml"
+jobs:
+  selene_check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Lint Lua code with Selene
+        uses: AlejandroSuero/selene-linter-action@v1.0.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --display-style=quiet lua plugin
+# vim: set ts=2 sts=2 sw=2 et ai si sta:
