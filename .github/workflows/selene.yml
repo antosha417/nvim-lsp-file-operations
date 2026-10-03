@@ -21,7 +21,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
       - name: Lint Lua code with Selene
-        uses: AlejandroSuero/selene-linter-action@v1
+        uses: AlejandroSuero/selene-linter-action@v1.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --display-style=quiet lua plugin
