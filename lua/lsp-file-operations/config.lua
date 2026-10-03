@@ -159,9 +159,9 @@ function M.setup(opts)
       nvim_tree_api.events.subscribe(
         event,
         function(args) ---@param args { fname: string }|{ new_name: string, old_name: string }
-          local ok, mod = pcall(require, module) ---@type boolean, LspFileOps.AllModules|nil|?
+          local ok, mod = pcall(require, "lsp-file-operations")
           if ok and mod then
-            mod(args)
+            mod[module](args)
           end
         end
       )
@@ -192,9 +192,9 @@ function M.setup(opts)
           local mod_args = type(args) == "table"
               and { new_name = args.destination, old_name = args.source }
             or { fname = args } --[[@as { fname: string }|{ new_name: string, old_name: string }]]
-          local ok, mod = pcall(require, module) ---@type boolean, LspFileOps.AllModules|nil|?
+          local ok, mod = pcall(require, "lsp-file-operations")
           if ok and mod then -- translate neo-tree arguemnts to the same format as nvim-tree
-            mod(mod_args)
+            mod[module](mod_args)
           end
         end,
       }
@@ -219,9 +219,9 @@ function M.setup(opts)
         group = "TriptychEvents",
         pattern = event,
         callback = function(ev)
-          local ok, mod = pcall(require, module) ---@type boolean, LspFileOps.AllModules|nil|?
+          local ok, mod = pcall(require, "lsp-file-operations")
           if ok and mod then
-            mod(
+            mod[module](
               (ev.data.from_path and ev.data.to_path)
                   and { new_name = ev.data.to_path, old_name = ev.data.from_path }
                 or { fname = ev.data.path }

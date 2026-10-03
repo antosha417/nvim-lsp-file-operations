@@ -87,7 +87,7 @@ local function gen_log_func(level)
       end
 
       if msg ~= "" then -- NOTE: Avoid notifying on empty output
-        vim.schedule(function() -- HACK: Use `vim.schedule` to avoid mangling the output of tests
+        vim.schedule(function() -- HACK: Use `vim.schedule()` to avoid mangling the output of tests
           local date = os.date("*t") --[[@as osdate]]
           local txt = ("[nvim-lsp-file-operations] [%s %d-%d-%d %02d:%02d:%02d]: %s"):format(
             level:upper(),

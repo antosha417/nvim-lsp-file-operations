@@ -22,6 +22,119 @@ local function rename_buf(bufnr, old_name, new_name)
   end
 end
 
+---@overload fun(method: "didCreate"|"didDelete"|"willCreate"|"willDelete"): callback: fun(data: { fname: string })
+---@overload fun(method: "didRename"|"willRename"): callback: fun(data: { new_name: string, old_name: string })
+local function gen_callback(method)
+  if vim.list_contains({ "didCreate", "didDelete" }, method) then
+    ---@param data { fname: string }
+    return function(data)
+      Utils.validate({
+        data = { data, { "table" } },
+        ["data.fname"] = { data.fname, { "string" } },
+      })
+
+      local lsp_method = ("workspace/%sFiles"):format(method)
+      for _, client in ipairs(Utils.get_clients()) do
+        if client.initialized then
+          local cap = Utils.get_nested_path(
+            client,
+            { "server_capabilities", "workspace", "fileOperations", method }
+          )
+          if cap and Utils.matches_filters(cap.filters or {}, data.fname) then
+            local params = { files = { { uri = vim.uri_from_fname(data.fname) } } }
+            Utils.client_notify(client, lsp_method, params)
+            require("lsp-file-operations.log").debug(
+              ("Sending %s notification"):format(lsp_method),
+              params
+            )
+          end
+        end
+      end
+    end
+  elseif method == "didRename" then
+    ---@param data { new_name: string, old_name: string }
+    return function(data)
+      Utils.validate({
+        data = { data, { "table" } },
+        ["data.new_name"] = { data.new_name, { "string" } },
+        ["data.old_name"] = { data.old_name, { "string" } },
+      })
+
+      local old, new = data.old_name, data.new_name
+      local lsp_method = ("workspace/%sFiles"):format(method)
+      for _, client in ipairs(Utils.get_clients()) do
+        if client.initialized then
+          local cap = Utils.get_nested_path(
+            client,
+            { "server_capabilities", "workspace", "fileOperations", method }
+          )
+          if cap and Utils.matches_filters(cap.filters or {}, old) then
+            local params = {
+              files = { { newUri = vim.uri_from_fname(new), oldUri = vim.uri_from_fname(old) } },
+            }
+            Utils.client_notify(client, lsp_method, params)
+            require("lsp-file-operations.log").debug(
+              ("Sending %s notification"):format(lsp_method),
+              params
+            )
+          end
+        end
+      end
+    end
+  elseif vim.list_contains({ "willCreate", "willDelete" }, method) then
+    ---@param data { fname: string }
+    return function(data)
+      Utils.validate({
+        data = { data, { "table" } },
+        ["data.fname"] = { data.fname, { "string" } },
+      })
+
+      for _, client in ipairs(Utils.get_clients()) do
+        if client.initialized then
+          local cap = Utils.get_nested_path(
+            client,
+            { "server_capabilities", "workspace", "fileOperations", method }
+          )
+          if cap and Utils.matches_filters(cap.filters or {}, data.fname) then
+            local edit, mtd =
+              Utils.get_workspace_edit(("%sFiles"):format(method), client, data.fname)
+            if edit and mtd then
+              require("lsp-file-operations.log").debug(("Applying %s edit"):format(mtd), edit)
+              vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
+            end
+          end
+        end
+      end
+    end
+  elseif method == "willRename" then
+    ---@param data { new_name: string, old_name: string }
+    return function(data)
+      Utils.validate({
+        data = { data, { "table" } },
+        ["data.new_name"] = { data.new_name, { "string" } },
+        ["data.old_name"] = { data.old_name, { "string" } },
+      })
+
+      local old, new = data.old_name, data.new_name
+      for _, client in ipairs(Utils.get_clients()) do
+        if client.initialized then
+          local cap = Utils.get_nested_path(
+            client,
+            { "server_capabilities", "workspace", "fileOperations", method }
+          )
+          if cap and Utils.matches_filters(cap.filters or {}, old) then
+            local edit, mtd = Utils.get_workspace_edit("willRenameFiles", client, old, new)
+            if edit and mtd then
+              require("lsp-file-operations.log").debug(("Applying %s edit"):format(mtd), edit)
+              vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
 ---@param bufnr integer
 ---@param fname string
 local function delete_buf(bufnr, fname)
@@ -112,6 +225,13 @@ function M.rename(opts)
   return true
 end
 
+M["did-create"] = gen_callback("didCreate")
+M["did-delete"] = gen_callback("didDelete")
+M["did-rename"] = gen_callback("didRename")
+M["will-create"] = gen_callback("willCreate")
+M["will-delete"] = gen_callback("willDelete")
+M["will-rename"] = gen_callback("willRename")
+
 ---Sourced from `Crysthamus/nvim-file-operations`:
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
 ---@param opts { fname: string }
@@ -201,5 +321,38 @@ function M.create(opts)
   return (pcall(vim.cmd.edit, vim.fn.fnameescape(fname)))
 end
 
-return M
+local LFO = setmetatable(M, {
+  __index = function(self, k)
+    local raw = rawget(self, k) or nil
+    if raw ~= nil then
+      return raw
+    end
+
+    local ok_mod, mod = pcall(require, "lsp-file-operations." .. k)
+    if ok_mod and mod then
+      return Utils.rawset(self, k, mod)
+    end
+
+    if k == "didCreate" then
+      return Utils.rawset(self, k, require("lsp-file-operations.did-create"))
+    end
+    if k == "didRDelete" then
+      return Utils.rawset(self, k, require("lsp-file-operations.did-delete"))
+    end
+    if k == "didRename" then
+      return Utils.rawset(self, k, require("lsp-file-operations.did-rename"))
+    end
+    if k == "willCreate" then
+      return Utils.rawset(self, k, require("lsp-file-operations.will-create"))
+    end
+    if k == "willRDelete" then
+      return Utils.rawset(self, k, require("lsp-file-operations.will-delete"))
+    end
+    if k == "willRename" then
+      return Utils.rawset(self, k, require("lsp-file-operations.will-rename"))
+    end
+  end,
+})
+
+return LFO
 -- vim: set ts=2 sts=2 sw=2 et ai si sta:

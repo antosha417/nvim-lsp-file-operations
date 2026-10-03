@@ -85,7 +85,7 @@ end
 --- Run one of the will-*/did-* module callbacks against the given fake clients.
 local function run_with_clients(module_name, clients, data)
   local get_clients = stub(utils, "get_clients").returns(clients)
-  local ok, err = pcall(require(module_name), data)
+  local ok, err = pcall(require("lsp-file-operations")[module_name], data)
   get_clients:revert()
   assert(ok, err)
 end
@@ -98,7 +98,7 @@ describe("did-* operations", function()
     { module = "did-delete", cap = "didDelete", method = "workspace/didDeleteFiles" },
   }) do
     describe(case.module, function()
-      local mod = "lsp-file-operations." .. case.module
+      local mod = case.module
 
       it("notifies clients that support the capability", function()
         local client = make_client(case.cap)
@@ -136,11 +136,7 @@ describe("did-* operations", function()
     local old_name, new_name = fname, fname .. ".bak"
     it("sends oldUri and newUri", function()
       local client = make_client("didRename")
-      run_with_clients(
-        "lsp-file-operations.did-rename",
-        { client },
-        { old_name = old_name, new_name = new_name }
-      )
+      run_with_clients("did-rename", { client }, { old_name = old_name, new_name = new_name })
       assert.are.equal(1, #client.notify_calls)
       assert.are.equal("workspace/didRenameFiles", client.notify_calls[1].method)
       assert.are.same({
@@ -150,21 +146,13 @@ describe("did-* operations", function()
 
     it("does not notify clients lacking the capability", function()
       local client = make_client()
-      run_with_clients(
-        "lsp-file-operations.did-rename",
-        { client },
-        { old_name = old_name, new_name = new_name }
-      )
+      run_with_clients("did-rename", { client }, { old_name = old_name, new_name = new_name })
       assert.are.equal(0, #client.notify_calls)
     end)
 
     it("matches filters against the old name", function()
       local client = make_client("didRename", { { pattern = { glob = "**/*.py" } } })
-      run_with_clients(
-        "lsp-file-operations.did-rename",
-        { client },
-        { old_name = old_name, new_name = new_name }
-      )
+      run_with_clients("did-rename", { client }, { old_name = old_name, new_name = new_name })
       assert.are.equal(0, #client.notify_calls)
     end)
   end)
@@ -183,7 +171,7 @@ describe("will-* operations", function()
     { module = "will-delete", cap = "willDelete", method = "workspace/willDeleteFiles" },
   }) do
     describe(case.module, function()
-      local mod = "lsp-file-operations." .. case.module
+      local mod = case.module
 
       it("requests an edit and applies it", function()
         local client = make_client(case.cap, nil, { result = edit })
@@ -229,11 +217,7 @@ describe("will-* operations", function()
     it("sends oldUri and newUri and applies the edit", function()
       local client = make_client("willRename", nil, { result = edit })
       local apply = stub(vim.lsp.util, "apply_workspace_edit")
-      run_with_clients(
-        "lsp-file-operations.will-rename",
-        { client },
-        { old_name = old_name, new_name = new_name }
-      )
+      run_with_clients("will-rename", { client }, { old_name = old_name, new_name = new_name })
       assert.are.equal(1, #client.request_calls)
       assert.are.equal("workspace/willRenameFiles", client.request_calls[1].method)
       assert.are.same({
@@ -246,11 +230,7 @@ describe("will-* operations", function()
     it("does not apply an edit when the request errors", function()
       local client = make_client("willRename", nil, { err = "boom" })
       local apply = stub(vim.lsp.util, "apply_workspace_edit")
-      run_with_clients(
-        "lsp-file-operations.will-rename",
-        { client },
-        { old_name = old_name, new_name = new_name }
-      )
+      run_with_clients("will-rename", { client }, { old_name = old_name, new_name = new_name })
       assert.stub(apply).was.not_called()
       apply:revert()
     end)
