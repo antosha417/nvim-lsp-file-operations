@@ -87,12 +87,12 @@ local function setup_events(op_events, subscribe)
   end
 
   local modules = { ---@type table<LspFileOpsConfig.Operations, string>
-    didCreateFiles = "lsp-file-operations.did-create",
-    didDeleteFiles = "lsp-file-operations.did-delete",
-    didRenameFiles = "lsp-file-operations.did-rename",
-    willCreateFiles = "lsp-file-operations.will-create",
-    willDeleteFiles = "lsp-file-operations.will-delete",
-    willRenameFiles = "lsp-file-operations.will-rename",
+    didCreateFiles = "did-create",
+    didDeleteFiles = "did-delete",
+    didRenameFiles = "did-rename",
+    willCreateFiles = "will-create",
+    willDeleteFiles = "will-delete",
+    willRenameFiles = "will-rename",
   }
   for operation, enabled in pairs(config.operations) do
     ---@cast operation LspFileOps.Operations

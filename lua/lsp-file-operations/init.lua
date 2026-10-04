@@ -155,6 +155,13 @@ M.get_config = Config.get
 M.set_config = Config.set
 M.setup = Config.setup
 
+M["did-create"] = gen_callback("didCreate")
+M["did-delete"] = gen_callback("didDelete")
+M["did-rename"] = gen_callback("didRename")
+M["will-create"] = gen_callback("willCreate")
+M["will-delete"] = gen_callback("willDelete")
+M["will-rename"] = gen_callback("willRename")
+
 ---The extra client capabilities provided by this plugin. To be merged with
 ---`vim.lsp.protocol.make_client_capabilities()` and sent to the LSP server.
 ---@return lsp.ClientCapabilities capabilities
@@ -192,12 +199,7 @@ function M.rename(opts)
   end
   old_name, new_name = vim.fn.fnamemodify(old_name, ":p"), vim.fn.fnamemodify(new_name, ":p")
 
-  local ok, mod = pcall(require, "lsp-file-operations.will-rename")
-  if not (ok and mod) then
-    Log.error("Unable to find `lsp-file-operations.will-rename`!")
-    error("Unable to find `lsp-file-operations.will-rename`!")
-  end
-  mod({ new_name = new_name, old_name = old_name })
+  M["will-rename"]({ new_name = new_name, old_name = old_name })
 
   local dir = vim.fn.fnamemodify(new_name, ":h")
   if vim.fn.isdirectory(dir) ~= 1 then
@@ -214,23 +216,10 @@ function M.rename(opts)
     rename_buf(bufnr, old_name, new_name)
   end
 
-  ok, mod = pcall(require, "lsp-file-operations.did-rename")
-  if not (ok and mod) then
-    Log.error("Unable to find `lsp-file-operations.did-rename`!")
-    return false
-  end
-
-  mod({ new_name = new_name, old_name = old_name })
+  M["did-rename"]({ new_name = new_name, old_name = old_name })
 
   return true
 end
-
-M["did-create"] = gen_callback("didCreate")
-M["did-delete"] = gen_callback("didDelete")
-M["did-rename"] = gen_callback("didRename")
-M["will-create"] = gen_callback("willCreate")
-M["will-delete"] = gen_callback("willDelete")
-M["will-rename"] = gen_callback("willRename")
 
 ---Sourced from `Crysthamus/nvim-file-operations`:
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
@@ -251,12 +240,7 @@ function M.delete(opts)
     return false
   end
 
-  local ok, mod = pcall(require, "lsp-file-operations.will-delete")
-  if not (ok and mod) then
-    return false
-  end
-
-  mod({ fname = fname })
+  M["will-delete"]({ fname = fname })
 
   local rm_ok, rm_err = (stat.type == "directory" and vim.uv.fs_rmdir or vim.uv.fs_unlink)(fname)
   if not rm_ok then
@@ -268,12 +252,7 @@ function M.delete(opts)
     delete_buf(bufnr, fname)
   end
 
-  ok, mod = pcall(require, "lsp-file-operations.did-delete")
-  if not (ok and mod) then
-    return false
-  end
-
-  mod({ fname = fname })
+  M["did-delete"]({ fname = fname })
 
   return true
 end
@@ -292,12 +271,7 @@ function M.create(opts)
   end
 
   local fname = vim.fn.fnamemodify(opts.fname, ":p")
-  local ok, mod = pcall(require, "lsp-file-operations.will-create")
-  if not (ok and mod) then
-    return false
-  end
-
-  mod({ fname = fname })
+  M["will-create"]({ fname = fname })
 
   local dir = vim.fn.fnamemodify(fname, ":h")
   if vim.fn.isdirectory(dir) ~= 1 then
@@ -311,12 +285,7 @@ function M.create(opts)
   end
   vim.uv.fs_close(fd)
 
-  ok, mod = pcall(require, "lsp-file-operations.did-create")
-  if not (ok and mod) then
-    return false
-  end
-
-  mod({ fname = fname })
+  M["did-create"]({ fname = fname })
 
   return (pcall(vim.cmd.edit, vim.fn.fnameescape(fname)))
 end
@@ -332,24 +301,23 @@ local LFO = setmetatable(M, {
     if ok_mod and mod then
       return Utils.rawset(self, k, mod)
     end
-
     if k == "didCreate" then
-      return Utils.rawset(self, k, require("lsp-file-operations.did-create"))
+      return Utils.rawset(self, k, M["did-create"])
     end
-    if k == "didRDelete" then
-      return Utils.rawset(self, k, require("lsp-file-operations.did-delete"))
+    if k == "didDelete" then
+      return Utils.rawset(self, k, M["did-delete"])
     end
     if k == "didRename" then
-      return Utils.rawset(self, k, require("lsp-file-operations.did-rename"))
+      return Utils.rawset(self, k, M["did-rename"])
     end
     if k == "willCreate" then
-      return Utils.rawset(self, k, require("lsp-file-operations.will-create"))
+      return Utils.rawset(self, k, M["will-create"])
     end
-    if k == "willRDelete" then
-      return Utils.rawset(self, k, require("lsp-file-operations.will-delete"))
+    if k == "willDelete" then
+      return Utils.rawset(self, k, M["will-delete"])
     end
     if k == "willRename" then
-      return Utils.rawset(self, k, require("lsp-file-operations.will-rename"))
+      return Utils.rawset(self, k, M["will-rename"])
     end
   end,
 })
