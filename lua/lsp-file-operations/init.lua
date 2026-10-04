@@ -195,16 +195,14 @@ end
 
 ---Sourced from `Crysthamus/nvim-file-operations`:
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
----@param opts { new_name: string, old_name?: string }
----@return boolean success
-function M.rename(opts)
+---@overload fun(new_name: string): success: boolean
+---@overload fun(new_name: string, old_name: string): success: boolean
+function M.rename(new_name, old_name)
   Utils.validate({
-    opts = { opts, { "table" } },
-    ["opts.new_name"] = { opts.new_name, { "string" } },
-    ["opts.old_name"] = { opts.old_name, { "string", "nil" }, true },
+    new_name = { new_name, { "string" } },
+    old_name = { old_name, { "string", "nil" }, true },
   })
-  local old_name = opts.old_name or vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
-  local new_name = opts.new_name
+  old_name = old_name or vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
 
   local Log = require("lsp-file-operations.log")
   if new_name == "" or old_name == "" then
@@ -237,18 +235,15 @@ end
 
 ---Sourced from `Crysthamus/nvim-file-operations`:
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
----@param opts { fname: string }
+---@param fname string
 ---@return boolean success
-function M.delete(opts)
-  Utils.validate({
-    opts = { opts, { "table" } },
-    ["opts.fname"] = { opts.fname, { "string" } },
-  })
-  if opts.fname == "" then
+function M.delete(fname)
+  Utils.validate({ fname = { fname, { "string" } } })
+  if fname == "" then
     return false
   end
 
-  local fname = vim.fn.fnamemodify(opts.fname, ":p")
+  fname = vim.fn.fnamemodify(fname, ":p")
   local stat = vim.uv.fs_stat(fname)
   if not stat then
     return false
@@ -273,18 +268,15 @@ end
 
 ---Sourced from `Crysthamus/nvim-file-operations`:
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
----@param opts { fname: string }
+---@param fname string
 ---@return boolean success
-function M.create(opts)
-  Utils.validate({
-    opts = { opts, { "table" } },
-    ["opts.fname"] = { opts.fname, { "string" } },
-  })
-  if opts.fname == "" then
+function M.create(fname)
+  Utils.validate({ fname = { fname, { "string" } } })
+  if fname == "" then
     return false
   end
 
-  local fname = vim.fn.fnamemodify(opts.fname, ":p")
+  fname = vim.fn.fnamemodify(fname, ":p")
   M["will-create"]({ fname = fname })
 
   local dir = vim.fn.fnamemodify(fname, ":h")

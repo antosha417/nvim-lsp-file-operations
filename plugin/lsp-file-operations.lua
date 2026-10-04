@@ -11,12 +11,9 @@ vim.api.nvim_create_user_command("LFO", function(ctx)
     and #ctx.fargs == 2
     and ctx.fargs[2] ~= ""
   then
-    (ctx.fargs[1] == "create" and LFO.create or LFO.delete)({ fname = ctx.fargs[2] })
+    (ctx.fargs[1] == "create" and LFO.create or LFO.delete)(ctx.fargs[2])
   elseif ctx.fargs[1] == "rename" and #ctx.fargs <= 3 then
-    LFO.rename({
-      new_name = ctx.fargs[#ctx.fargs == 3 and 3 or 2],
-      old_name = #ctx.fargs == 3 and ctx.fargs[2] or nil,
-    })
+    LFO.rename(ctx.fargs[#ctx.fargs == 3 and 3 or 2], #ctx.fargs == 3 and ctx.fargs[2] or nil)
   elseif not vim.list_contains({ "create", "delete", "rename" }, ctx.fargs[1]) then
     Log.error(("Unknown argument for `:LFO` - `%s`"):format(ctx.fargs[1]))
     error(("Unknown argument for `:LFO` - `%s`"):format(ctx.fargs[1]))
