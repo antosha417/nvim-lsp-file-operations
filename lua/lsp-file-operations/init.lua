@@ -16,6 +16,10 @@ local function rename_buf(bufnr, old_name, new_name)
     vim.api.nvim_buf_set_name(bufnr, new_name)
     vim.api.nvim_buf_call(bufnr, function()
       pcall(vim.cmd.edit, { bang = true, mods = { silent = true } })
+      if vim.api.nvim_get_option_value("modified", { buf = bufnr }) then
+        pcall(vim.cmd.write)
+      end
+      vim.cmd.checktime()
     end)
   end
 end
@@ -147,31 +151,42 @@ local function delete_buf(bufnr, fname)
 end
 
 ---@class LspFileOps
+---@field ["did-create"] fun(data: { fname: string })
+---@field ["did-delete"] fun(data: { fname: string })
+---@field ["did-rename"] fun(data: { new_name: string, old_name: string })
+---@field ["will-create"] fun(data: { fname: string })
+---@field ["will-delete"] fun(data: { fname: string })
+---@field ["will-rename"] fun(data: { new_name: string, old_name: string })
 ---@field config LspFileOps.Config
+---@field didCreate fun(data: { fname: string })
+---@field didDelete fun(data: { fname: string })
+---@field didRename fun(data: { new_name: string, old_name: string })
+---@field did_create fun(data: { fname: string })
+---@field did_delete fun(data: { fname: string })
+---@field did_rename fun(data: { new_name: string, old_name: string })
+---@field get_config fun(): config: LspFileOpsConfig
 ---@field log LspFileOps.Log
+---@field set_config fun(cfg?: LspFileOpsConfig)
 ---@field utils LspFileOps.Utils
+---@field willCreate fun(data: { fname: string })
+---@field willDelete fun(data: { fname: string })
+---@field willRename fun(data: { new_name: string, old_name: string })
+---@field will_create fun(data: { fname: string })
+---@field will_delete fun(data: { fname: string })
+---@field will_rename fun(data: { new_name: string, old_name: string })
 local M = {}
-
-function M.get_config()
-  return require("lsp-file-operations.config").get()
-end
-
----@param cfg? LspFileOpsConfig
-function M.set_config(cfg)
-  require("lsp-file-operations.config").set(cfg)
-end
 
 ---@param opts? LspFileOpsConfig
 function M.setup(opts)
   require("lsp-file-operations.config").setup(opts)
 end
 
-M["did-create"] = gen_callback("didCreate")
-M["did-delete"] = gen_callback("didDelete")
-M["did-rename"] = gen_callback("didRename")
-M["will-create"] = gen_callback("willCreate")
-M["will-delete"] = gen_callback("willDelete")
-M["will-rename"] = gen_callback("willRename")
+M.did_create = gen_callback("didCreate")
+M.did_delete = gen_callback("didDelete")
+M.did_rename = gen_callback("didRename")
+M.will_create = gen_callback("willCreate")
+M.will_delete = gen_callback("willDelete")
+M.will_rename = gen_callback("willRename")
 
 ---The extra client capabilities provided by this plugin. To be merged with
 ---`vim.lsp.protocol.make_client_capabilities()` and sent to the LSP server.
@@ -195,6 +210,85 @@ end
 
 ---Sourced from `Crysthamus/nvim-file-operations`:
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
+---@param fname string
+---@return boolean success
+function M.create(fname)
+  Utils.validate({ fname = { fname, { "string" } } })
+  if fname == "" then
+    return false
+  end
+  local is_dir = fname:sub(-1) == "/"
+  fname = Utils.strip_slash(fname)
+
+  local Log = require("lsp-file-operations.log")
+  if vim.uv.fs_stat(fname) ~= nil then -- Abort if target already exists
+    Log.debug("Target already exists:", fname)
+    return false
+  end
+
+  M.will_create({ fname = fname })
+
+  local dir = Utils.strip_slash(fname, ":h")
+  if vim.fn.isdirectory(dir) ~= 1 and vim.fn.mkdir(dir, "p") ~= 1 then
+    Log.error("Unable to create parent directories for:", fname)
+    return false
+  end
+
+  if is_dir then
+    vim.uv.fs_mkdir(fname, tonumber("755", 8))
+  else
+    local fd, err = vim.uv.fs_open(fname, "w", tonumber("644", 8))
+    if not fd then
+      require("lsp-file-operations.log").error("Failed to create file:", err)
+      return false
+    end
+    vim.uv.fs_close(fd)
+  end
+
+  M.did_create({ fname = fname })
+  return (
+    pcall(function()
+      if not is_dir then
+        vim.cmd.edit(vim.fn.fnameescape(fname))
+      end
+    end)
+  )
+end
+
+---Sourced from `Crysthamus/nvim-file-operations`:
+---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
+---@param fname string
+---@return boolean success
+function M.delete(fname)
+  Utils.validate({ fname = { fname, { "string" } } })
+  if fname == "" then
+    return false
+  end
+
+  fname = Utils.strip_slash(fname)
+  local stat = vim.uv.fs_stat(fname)
+  if not stat then
+    return false
+  end
+
+  M.will_delete({ fname = fname })
+
+  local rm_ok, rm_err = (stat.type == "directory" and vim.uv.fs_rmdir or vim.uv.fs_unlink)(fname)
+  if not rm_ok then
+    require("lsp-file-operations.log").error("Failed to delete:", rm_err)
+    return false
+  end
+
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    delete_buf(bufnr, fname)
+  end
+
+  M.did_delete({ fname = fname })
+  return true
+end
+
+---Sourced from `Crysthamus/nvim-file-operations`:
+---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
 ---@overload fun(new_name: string): success: boolean
 ---@overload fun(new_name: string, old_name: string): success: boolean
 function M.rename(new_name, old_name)
@@ -205,15 +299,15 @@ function M.rename(new_name, old_name)
   old_name = old_name or vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
 
   local Log = require("lsp-file-operations.log")
-  if new_name == "" or old_name == "" then
+  if vim.list_contains({ new_name, old_name }, "") then
     Log.error("Either `new_name` or `old_name` for `rename()` are empty")
     error("Either `new_name` or `old_name` for `rename()` are empty")
   end
-  old_name, new_name = vim.fn.fnamemodify(old_name, ":p"), vim.fn.fnamemodify(new_name, ":p")
+  old_name, new_name = Utils.strip_slash(old_name), Utils.strip_slash(new_name)
 
-  M["will-rename"]({ new_name = new_name, old_name = old_name })
+  M.will_rename({ new_name = new_name, old_name = old_name })
 
-  local dir = vim.fn.fnamemodify(new_name, ":h")
+  local dir = Utils.strip_slash(new_name, ":h")
   if vim.fn.isdirectory(dir) ~= 1 then
     vim.fn.mkdir(dir, "p")
   end
@@ -228,72 +322,8 @@ function M.rename(new_name, old_name)
     pcall(rename_buf, bufnr, old_name, new_name)
   end
 
-  M["did-rename"]({ new_name = new_name, old_name = old_name })
-
+  M.did_rename({ new_name = new_name, old_name = old_name })
   return true
-end
-
----Sourced from `Crysthamus/nvim-file-operations`:
----https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
----@param fname string
----@return boolean success
-function M.delete(fname)
-  Utils.validate({ fname = { fname, { "string" } } })
-  if fname == "" then
-    return false
-  end
-
-  fname = vim.fn.fnamemodify(fname, ":p")
-  local stat = vim.uv.fs_stat(fname)
-  if not stat then
-    return false
-  end
-
-  M["will-delete"]({ fname = fname })
-
-  local rm_ok, rm_err = (stat.type == "directory" and vim.uv.fs_rmdir or vim.uv.fs_unlink)(fname)
-  if not rm_ok then
-    require("lsp-file-operations.log").error("Failed to delete:", rm_err)
-    return false
-  end
-
-  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    delete_buf(bufnr, fname)
-  end
-
-  M["did-delete"]({ fname = fname })
-
-  return true
-end
-
----Sourced from `Crysthamus/nvim-file-operations`:
----https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
----@param fname string
----@return boolean success
-function M.create(fname)
-  Utils.validate({ fname = { fname, { "string" } } })
-  if fname == "" then
-    return false
-  end
-
-  fname = vim.fn.fnamemodify(fname, ":p")
-  M["will-create"]({ fname = fname })
-
-  local dir = vim.fn.fnamemodify(fname, ":h")
-  if vim.fn.isdirectory(dir) ~= 1 then
-    vim.fn.mkdir(dir, "p")
-  end
-
-  local fd, err = vim.uv.fs_open(fname, "w", tonumber("644", 8))
-  if not fd then
-    require("lsp-file-operations.log").error("Failed to create:", err)
-    return false
-  end
-  vim.uv.fs_close(fd)
-
-  M["did-create"]({ fname = fname })
-
-  return (pcall(vim.cmd.edit, vim.fn.fnameescape(fname)))
 end
 
 local LFO = setmetatable(M, {
@@ -307,23 +337,47 @@ local LFO = setmetatable(M, {
     if ok_mod and mod then
       return Utils.rawset(self, k, mod)
     end
+    if k == "get_config" then
+      return Utils.rawset(self, k, require("lsp-file-operations.config").get)
+    end
+    if k == "set_config" then
+      return Utils.rawset(self, k, require("lsp-file-operations.config").set)
+    end
     if k == "didCreate" then
-      return Utils.rawset(self, k, M["did-create"])
+      return Utils.rawset(self, k, M.did_create)
     end
     if k == "didDelete" then
-      return Utils.rawset(self, k, M["did-delete"])
+      return Utils.rawset(self, k, M.did_delete)
     end
     if k == "didRename" then
-      return Utils.rawset(self, k, M["did-rename"])
+      return Utils.rawset(self, k, M.did_rename)
     end
     if k == "willCreate" then
-      return Utils.rawset(self, k, M["will-create"])
+      return Utils.rawset(self, k, M.will_create)
     end
     if k == "willDelete" then
-      return Utils.rawset(self, k, M["will-delete"])
+      return Utils.rawset(self, k, M.will_delete)
     end
     if k == "willRename" then
-      return Utils.rawset(self, k, M["will-rename"])
+      return Utils.rawset(self, k, M.will_rename)
+    end
+    if k == "did-create" then
+      return Utils.rawset(self, k, M.did_create)
+    end
+    if k == "did-delete" then
+      return Utils.rawset(self, k, M.did_delete)
+    end
+    if k == "did-rename" then
+      return Utils.rawset(self, k, M.did_rename)
+    end
+    if k == "will-create" then
+      return Utils.rawset(self, k, M.will_create)
+    end
+    if k == "will-delete" then
+      return Utils.rawset(self, k, M.will_delete)
+    end
+    if k == "will-rename" then
+      return Utils.rawset(self, k, M.will_rename)
     end
   end,
 })

@@ -3,6 +3,14 @@
 ---@class LspFileOps.Utils
 local M = {}
 
+---Checks whether nvim is running on Windows.
+--- ---
+---@return boolean win32
+---@nodiscard
+function M.is_windows()
+  return vim.fn.has("win32") == 1
+end
+
 ---Get rid of all duplicates in input table.
 ---
 ---If table is empty, it'll just return it as-is.
@@ -242,6 +250,91 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   elseif not (resp and resp.result) then
     Log.warn(("Got empty response for `%s`"):format(method))
   end
+end
+
+---Left strip given a leading string (or list of strings) within a string, if any.
+--- ---
+---@param char string[]|string
+---@param str string
+---@return string new_str
+---@nodiscard
+function M.lstrip(char, str)
+  M.validate({
+    char = { char, { "string", "table" } },
+    str = { str, { "string" } },
+  })
+  if str == "" then
+    return str
+  end
+
+  if type(char) == "string" then
+    if not vim.startswith(str, char) or char:len() > str:len() then
+      return str
+    end
+
+    local i, len, new_str, other = 1, str:len(), "", false
+    while i <= len and i + char:len() - 1 <= len do
+      if str:sub(i, i + char:len() - 1) ~= char and not other then
+        other = true
+      end
+      if other then
+        new_str = ("%s%s"):format(new_str, str:sub(i, i))
+      end
+      i = i + 1
+    end
+    return new_str ~= "" and new_str or str
+  end
+
+  for _, c in ipairs(char) do
+    if c:len() > str:len() then
+      break
+    end
+    str = M.lstrip(c, str)
+  end
+  return str
+end
+
+---Right strip given a leading string (or list of strings) within a string, if any.
+--- ---
+---@param char string[]|string
+---@param str string
+---@return string new_str
+---@nodiscard
+function M.rstrip(char, str)
+  M.validate({
+    char = { char, { "string", "table" } },
+    str = { str, { "string" } },
+  })
+  if str == "" then
+    return str
+  end
+
+  if type(char) == "table" and #char > 0 then
+    for _, c in ipairs(char) do
+      if c:len() > str:len() then
+        break
+      end
+      str = M.rstrip(c, str)
+    end
+  elseif type(char) == "string" then
+    str = (not vim.startswith(str:reverse(), char) or char:len() > str:len()) and str
+      or M.lstrip(char, str:reverse()):reverse()
+  end
+  return str
+end
+
+---@overload fun(path: string): stripped_path: string
+---@overload fun(path: string, mods: string): stripped_path: string
+---@nodiscard
+function M.strip_slash(path, mods)
+  M.validate({
+    path = { path, { "string" } },
+    mods = { mods, { "string", "nil" }, true },
+  })
+  return M.rstrip(
+    M.is_windows() and "\\" or "/",
+    vim.fn.fnamemodify(path, (mods and mods ~= "") and mods or ":p")
+  )
 end
 
 ---@generic T: table, V
