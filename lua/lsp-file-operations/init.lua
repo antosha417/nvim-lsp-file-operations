@@ -149,11 +149,24 @@ local function delete_buf(bufnr, fname)
 end
 
 ---@class LspFileOps
+---@field config LspFileOps.Config
+---@field log LspFileOps.Log
+---@field utils LspFileOps.Utils
 local M = {}
 
-M.get_config = Config.get
-M.set_config = Config.set
-M.setup = Config.setup
+function M.get_config()
+  return Config.get()
+end
+
+---@param cfg? LspFileOpsConfig
+function M.set_config(cfg)
+  Config.set(cfg)
+end
+
+---@param opts? LspFileOpsConfig
+function M.setup(opts)
+  Config.setup(opts)
+end
 
 M["did-create"] = gen_callback("didCreate")
 M["did-delete"] = gen_callback("didDelete")
