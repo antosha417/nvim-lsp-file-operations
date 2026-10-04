@@ -59,7 +59,7 @@ Full implementation of all `workspace.fileOperations` for [the current LSP spec]
 > so `nvim-lsp-file-operations` depends on `neo-tree.nvim`, not the other way around!
 
 <details>
-<summary>Using <a href="https://github.com/lewis6991/pckr.nvim">pckr.nvim</a></summary>
+<summary><a href="https://github.com/lewis6991/pckr.nvim">pckr.nvim</a></summary>
 
 ```lua
 require("pckr").add({
@@ -78,7 +78,7 @@ require("pckr").add({
 
 </details>
 <details>
-<summary>Using <a href="https://github.com/folke.lazy.nvim">lazy.nvim</a></summary>
+<summary><a href="https://github.com/folke.lazy.nvim">lazy.nvim</a></summary>
 
 ```lua
 return {
@@ -99,7 +99,7 @@ return {
 
 </details>
 <details>
-<summary>Using <a href="https://neovim.io/doc/user/pack/#_plugin-manager"><code>vim.pack</code></a></summary>
+<summary><a href="https://neovim.io/doc/user/pack/#_plugin-manager"><code>vim.pack</code></a></summary>
 
 ```lua
 vim.pack.add({
@@ -159,7 +159,7 @@ Follow any of the instructions below based on your Neovim version:
 <details>
 <summary>Neovim <code>v0.11</code> or later</summary>
 
-You can use `vim.lsp.config()` to set the global capabilities for every server:
+You can use [`vim.lsp.config()`](https://neovim.io/doc/user/lsp/#vim.lsp.config()) to set the global capabilities for every server:
 
 ```lua
 -- Set global defaults for all servers
@@ -227,7 +227,7 @@ Credits to [@Crysthamus](https://github.com/Crysthamus/nvim-file-operations) as 
 You can now trigger a workspace event for file creation (`willCreate` and `didCreate`):
 
 ```lua
-require("lsp-file-operations").create({ fname = "<PATH/TO/FILE>" })
+require("lsp-file-operations").create("<PATH/TO/FILE>")
 ```
 
 ### `delete()`
@@ -235,7 +235,7 @@ require("lsp-file-operations").create({ fname = "<PATH/TO/FILE>" })
 You can now trigger a workspace event for file deletion (`willDelete` and `didDelete`):
 
 ```lua
-require("lsp-file-operations").delete({ fname = "<PATH/TO/FILE>" })
+require("lsp-file-operations").delete("<PATH/TO/FILE>")
 ```
 
 ### `rename()`
@@ -243,7 +243,16 @@ require("lsp-file-operations").delete({ fname = "<PATH/TO/FILE>" })
 You can now trigger a workspace event for file renaming (`willRename` and `didRename`):
 
 ```lua
-require("lsp-file-operations").rename({ old_name = "<PATH/TO/OLD_FILE>", new_name = "<PATH/TO/NEW_FILE>" })
+-- Renames the current file
+require("lsp-file-operations").rename(
+  "<PATH/TO/NEW_FILE>" -- `new_name`
+)
+
+-- Renames the first file into the second one
+require("lsp-file-operations").rename(
+  "<PATH/TO/OLD_FILE>", -- `old_name`
+  "<PATH/TO/NEW_FILE>" -- `new_name`
+)
 ```
 
 ---
