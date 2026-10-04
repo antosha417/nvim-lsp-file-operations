@@ -1,8 +1,6 @@
 ---@module "lsp-file-operations._meta"
 
-local Config = require("lsp-file-operations.config")
 local Utils = require("lsp-file-operations.utils")
-local Log = require("lsp-file-operations.log")
 
 ---@param bufnr integer
 ---@param old_name string
@@ -155,17 +153,17 @@ end
 local M = {}
 
 function M.get_config()
-  return Config.get()
+  return require("lsp-file-operations.config").get()
 end
 
 ---@param cfg? LspFileOpsConfig
 function M.set_config(cfg)
-  Config.set(cfg)
+  require("lsp-file-operations.config").set(cfg)
 end
 
 ---@param opts? LspFileOpsConfig
 function M.setup(opts)
-  Config.setup(opts)
+  require("lsp-file-operations.config").setup(opts)
 end
 
 M["did-create"] = gen_callback("didCreate")
@@ -179,6 +177,7 @@ M["will-rename"] = gen_callback("willRename")
 ---`vim.lsp.protocol.make_client_capabilities()` and sent to the LSP server.
 ---@return lsp.ClientCapabilities capabilities
 function M.default_capabilities()
+  local Config = require("lsp-file-operations.config")
   local config = Config.get() or Config.get_defaults()
   local result = { workspace = { fileOperations = {} } } ---@type lsp.ClientCapabilities
   for operation, capability in pairs({
@@ -206,6 +205,8 @@ function M.rename(opts)
   })
   local old_name = opts.old_name or vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
   local new_name = opts.new_name
+
+  local Log = require("lsp-file-operations.log")
   if new_name == "" or old_name == "" then
     Log.error("Either `new_name` or `old_name` for `rename()` are empty")
     error("Either `new_name` or `old_name` for `rename()` are empty")
@@ -226,7 +227,7 @@ function M.rename(opts)
   end
 
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    rename_buf(bufnr, old_name, new_name)
+    pcall(rename_buf, bufnr, old_name, new_name)
   end
 
   M["did-rename"]({ new_name = new_name, old_name = old_name })
@@ -257,7 +258,7 @@ function M.delete(opts)
 
   local rm_ok, rm_err = (stat.type == "directory" and vim.uv.fs_rmdir or vim.uv.fs_unlink)(fname)
   if not rm_ok then
-    Log.error("Failed to delete:", rm_err)
+    require("lsp-file-operations.log").error("Failed to delete:", rm_err)
     return false
   end
 
@@ -293,7 +294,7 @@ function M.create(opts)
 
   local fd, err = vim.uv.fs_open(fname, "w", tonumber("644", 8))
   if not fd then
-    Log.error("Failed to create:", err)
+    require("lsp-file-operations.log").error("Failed to create:", err)
     return false
   end
   vim.uv.fs_close(fd)
