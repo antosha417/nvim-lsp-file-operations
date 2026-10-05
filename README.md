@@ -84,6 +84,7 @@ require("pckr").add({
 return {
   {
     "antosha417/nvim-lsp-file-operations",
+    cmd = 'LFO',
     -- Uncomment whichever supported plugin(s) you use
     -- dependencies = {
     --   "nvim-tree/nvim-tree.lua",
