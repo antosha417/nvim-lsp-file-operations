@@ -16,26 +16,20 @@ vim.api.nvim_create_user_command("LFO", function(ctx)
     LFO.rename(ctx.fargs[#ctx.fargs == 3 and 3 or 2], #ctx.fargs == 3 and ctx.fargs[2] or nil)
   elseif not vim.list_contains({ "create", "delete", "rename" }, ctx.fargs[1]) then
     Log.error(("Unknown argument for `:LFO` - `%s`"):format(ctx.fargs[1]))
-    error(("Unknown argument for `:LFO` - `%s`"):format(ctx.fargs[1]))
   elseif ctx.fargs[1] == "create" and #ctx.fargs ~= 2 or ctx.fargs[2] == "" then
     Log.error("`:LFO create` only accepts one argument (and must not be empty)")
-    error("`:LFO create` only accepts one argument (and must not be empty)")
   elseif ctx.fargs[1] == "delete" and #ctx.fargs ~= 2 or ctx.fargs[2] == "" then
     Log.error("`:LFO delete` only accepts one argument (and must not be empty)")
-    error("`:LFO delete` only accepts one argument (and must not be empty)")
   elseif ctx.fargs[1] == "rename" and #ctx.fargs < 2 or #ctx.fargs > 3 then
     Log.error("`:LFO rename` only accepts either one or two arguments")
-    error("`:LFO rename` only only accepts either one or two arguments")
   elseif ctx.fargs[1] == "rename" and #ctx.fargs >= 2 and ctx.fargs[2] == "" then
     Log.error("`:LFO rename` requires its first argument not to be empty")
-    error("`:LFO rename` requires its first argument not to be empty")
   elseif ctx.fargs[1] == "rename" and #ctx.fargs == 3 and ctx.fargs[3] == "" then
     Log.error("`:LFO rename` requires its second argument not to be empty")
-    error("`:LFO rename` requires its second argument not to be empty")
   end
 end, {
   nargs = "+",
-  complete = function(_, line)
+  complete = function(_, line) ---@param line string
     local args = require("lsp-file-operations.utils").dedup(vim.split(line, " ", {
       trimempty = false,
     }))
@@ -49,7 +43,7 @@ end, {
         end
       end
     elseif
-      (args[2] == "rename" and #args >= 3 and #args <= 4)
+      (#args >= 3 and #args <= 4 and args[2] == "rename")
       or (vim.list_contains({ "create", "delete" }, args[2]) and #args == 3)
     then
       items = vim.fn.getcompletion(args[#args], "file")

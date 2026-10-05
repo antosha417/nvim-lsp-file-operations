@@ -8,14 +8,6 @@
 ---|'willDeleteFiles'
 ---|'willRenameFiles'
 
----@alias LspFileOps.AllModules
----|LspFileOps.DidCreate
----|LspFileOps.DidDelete
----|LspFileOps.DidRename
----|LspFileOps.WillCreate
----|LspFileOps.WillDelete
----|LspFileOps.WillRename
-
 ---@class (exact) LspFileOpsConfig.Operations
 ---@field didCreateFiles? boolean
 ---@field didDeleteFiles? boolean
