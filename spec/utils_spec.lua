@@ -1,61 +1,62 @@
-local utils = require("lsp-file-operations.utils")
+local Util = require("lsp-file-operations.util")
 local assert = require("luassert")
+local uv = vim.uv or vim.loop
 
-describe("utils.validate", function()
+describe("Util.validate", function()
   it("accepts valid values", function()
     assert.has_no.errors(function()
-      utils.validate({ name = { "foo", { "string" } } })
+      Util.validate({ name = { "foo", { "string" } } })
     end)
   end)
 
   it("rejects wrong types", function()
     assert.has.errors(function()
-      utils.validate({ name = { 42, { "string" } } })
+      Util.validate({ name = { 42, { "string" } } })
     end)
   end)
 
   it("accepts nil value when only optional flag set to true", function()
     assert.has_no.errors(function()
-      utils.validate({ name = { nil, { "table" }, true } })
+      Util.validate({ name = { nil, { "table" }, true } })
     end)
   end)
 
   it("respects the optional flag", function()
     assert.has_no.errors(function()
-      utils.validate({ name = { nil, { "table", "nil" }, true } })
+      Util.validate({ name = { nil, { "table", "nil" }, true } })
     end)
   end)
 
   it("rejects missing non-optional values", function()
     assert.has.errors(function()
-      utils.validate({ name = { nil, { "string" } } })
+      Util.validate({ name = { nil, { "string" } } })
     end)
   end)
 
   it("trims excess spec elements without error", function()
     assert.has_no.errors(function()
-      utils.validate({ name = { "foo", { "string" }, false, "custom message" } })
+      Util.validate({ name = { "foo", { "string" }, false, "custom message" } })
     end)
   end)
 end)
 
-describe("utils.get_nested_path", function()
+describe("Util.get_nested_path", function()
   local t = { a = { b = { c = "value" } } }
 
   it("resolves a deep path", function()
-    assert.are.equal("value", utils.get_nested_path(t, { "a", "b", "c" }))
+    assert.are.equal("value", Util.get_nested_path(t, { "a", "b", "c" }))
   end)
 
   it("returns the table itself for empty keys", function()
-    assert.are.same(t, utils.get_nested_path(t, {}))
+    assert.are.same(t, Util.get_nested_path(t, {}))
   end)
 
   it("returns nil for a missing key", function()
-    assert.is_nil(utils.get_nested_path(t, { "a", "x", "c" }))
+    assert.is_nil(Util.get_nested_path(t, { "a", "x", "c" }))
   end)
 end)
 
-describe("utils.matches_filters", function()
+describe("Util.matches_filters", function()
   local tmpdir
 
   before_each(function()
@@ -70,18 +71,18 @@ describe("utils.matches_filters", function()
   it("matches a file glob", function()
     local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
-    assert.is_true(utils.matches_filters({ { pattern = { glob = "**/*.lua" } } }, file))
+    assert.is_true(Util.matches_filters({ { pattern = { glob = "**/*.lua" } } }, file))
   end)
 
   it("does not match a non-matching glob", function()
     local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
-    assert.is_falsy(utils.matches_filters({ { pattern = { glob = "**/*.py" } } }, file))
+    assert.is_falsy(Util.matches_filters({ { pattern = { glob = "**/*.py" } } }, file))
   end)
 
   it("respects matches = 'file' (excludes directories)", function()
     assert.is_falsy(
-      utils.matches_filters({ { pattern = { glob = "**/*", matches = "file" } } }, tmpdir)
+      Util.matches_filters({ { pattern = { glob = "**/*", matches = "file" } } }, tmpdir)
     )
   end)
 
@@ -89,7 +90,7 @@ describe("utils.matches_filters", function()
     local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
     assert.is_falsy(
-      utils.matches_filters({ { pattern = { glob = "**/*", matches = "folder" } } }, file)
+      Util.matches_filters({ { pattern = { glob = "**/*", matches = "folder" } } }, file)
     )
   end)
 
@@ -97,7 +98,7 @@ describe("utils.matches_filters", function()
     local file = vim.fs.joinpath(tmpdir, "Test.LUA")
     vim.fn.writefile({}, file)
     assert.is_true(
-      utils.matches_filters(
+      Util.matches_filters(
         { { pattern = { glob = "**/*.lua", options = { ignoreCase = true } } } },
         file
       )
@@ -105,13 +106,16 @@ describe("utils.matches_filters", function()
   end)
 
   it("returns falsy for an empty filter list", function()
-    assert.is_falsy(utils.matches_filters({}, tmpdir))
+    assert.is_falsy(Util.matches_filters({}, tmpdir))
   end)
 
   it("matches if ANY filter matches (OR semantics)", function()
     local file = vim.fs.joinpath(tmpdir, "test.lua")
-    vim.fn.writefile({}, file)
-    assert.is_true(utils.matches_filters({
+    local fd = uv.fs_open(file, "w", tonumber("644", 8))
+    assert(fd)
+    assert(uv.fs_write(fd, { "" }))
+    uv.fs_close(fd)
+    assert.is_true(Util.matches_filters({
       { pattern = { glob = "**/*.py" } },
       { pattern = { glob = "**/*.lua" } },
     }, file))
@@ -121,15 +125,15 @@ describe("utils.matches_filters", function()
     local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
     local filters = { { pattern = { glob = "**/" } } }
-    assert.is_true(utils.matches_filters(filters, tmpdir))
-    assert.is_falsy(utils.matches_filters(filters, file))
+    assert.is_true(Util.matches_filters(filters, tmpdir))
+    assert.is_falsy(Util.matches_filters(filters, file))
   end)
 
   it("restores the global ignorecase option after matching", function()
     vim.o.ignorecase = true
     local file = vim.fs.joinpath(tmpdir, "test.lua")
     vim.fn.writefile({}, file)
-    utils.matches_filters({ { pattern = { glob = "**/*.lua" } } }, file)
+    Util.matches_filters({ { pattern = { glob = "**/*.lua" } } }, file)
     assert.is_true(vim.o.ignorecase)
     vim.o.ignorecase = false
   end)

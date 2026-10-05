@@ -1,12 +1,14 @@
 ---@module "lsp-file-operations._meta"
 
-local Utils = require("lsp-file-operations.utils")
+local uv = vim.uv or vim.loop
+local Log = require("lsp-file-operations.log")
+local Util = require("lsp-file-operations.util")
 
 ---@param bufnr integer
 ---@param old_name string
 ---@param new_name string
 local function rename_buf(bufnr, old_name, new_name)
-  Utils.validate({
+  Util.validate({
     bufnr = { bufnr, { "number" } },
     old_name = { old_name, { "string" } },
     new_name = { new_name, { "string" } },
@@ -16,7 +18,10 @@ local function rename_buf(bufnr, old_name, new_name)
     vim.api.nvim_buf_set_name(bufnr, new_name)
     vim.api.nvim_buf_call(bufnr, function()
       pcall(vim.cmd.edit, { bang = true, mods = { silent = true } })
-      if vim.api.nvim_get_option_value("modified", { buf = bufnr }) then
+      if
+        require("lsp-file-operations.config").get().auto_save
+        and vim.api.nvim_get_option_value("modified", { buf = bufnr })
+      then
         pcall(vim.cmd.write)
       end
       vim.cmd.checktime()
@@ -28,35 +33,30 @@ end
 ---@overload fun(method: "didRename"|"willRename"): callback: fun(data: { new_name: string, old_name: string })
 local function gen_callback(method)
   if vim.list_contains({ "didCreate", "didDelete" }, method) then
-    ---@param data { fname: string }
-    return function(data)
-      Utils.validate({
+    return function(data) ---@param data { fname: string }
+      Util.validate({
         data = { data, { "table" } },
         ["data.fname"] = { data.fname, { "string" } },
       })
 
       local lsp_method = ("workspace/%sFiles"):format(method)
-      for _, client in ipairs(Utils.get_clients()) do
+      for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
-          local cap = Utils.get_nested_path(
+          local cap = Util.get_nested_path(
             client,
             { "server_capabilities", "workspace", "fileOperations", method }
           )
-          if cap and Utils.matches_filters(cap.filters or {}, data.fname) then
+          if cap and Util.matches_filters(cap.filters or {}, data.fname) then
             local params = { files = { { uri = vim.uri_from_fname(data.fname) } } }
-            Utils.client_notify(client, lsp_method, params)
-            require("lsp-file-operations.log").debug(
-              ("Sending %s notification"):format(lsp_method),
-              params
-            )
+            Util.client_notify(client, lsp_method, params)
+            Log.debug(("Sending %s notification"):format(lsp_method), params)
           end
         end
       end
     end
   elseif method == "didRename" then
-    ---@param data { new_name: string, old_name: string }
-    return function(data)
-      Utils.validate({
+    return function(data) ---@param data { new_name: string, old_name: string }
+      Util.validate({
         data = { data, { "table" } },
         ["data.new_name"] = { data.new_name, { "string" } },
         ["data.old_name"] = { data.old_name, { "string" } },
@@ -64,44 +64,40 @@ local function gen_callback(method)
 
       local old, new = data.old_name, data.new_name
       local lsp_method = ("workspace/%sFiles"):format(method)
-      for _, client in ipairs(Utils.get_clients()) do
+      for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
-          local cap = Utils.get_nested_path(
+          local cap = Util.get_nested_path(
             client,
             { "server_capabilities", "workspace", "fileOperations", method }
           )
-          if cap and Utils.matches_filters(cap.filters or {}, old) then
+          if cap and Util.matches_filters(cap.filters or {}, old) then
             local params = {
               files = { { newUri = vim.uri_from_fname(new), oldUri = vim.uri_from_fname(old) } },
             }
-            Utils.client_notify(client, lsp_method, params)
-            require("lsp-file-operations.log").debug(
-              ("Sending %s notification"):format(lsp_method),
-              params
-            )
+            Util.client_notify(client, lsp_method, params)
+            Log.debug(("Sending %s notification"):format(lsp_method), params)
           end
         end
       end
     end
   elseif vim.list_contains({ "willCreate", "willDelete" }, method) then
-    ---@param data { fname: string }
-    return function(data)
-      Utils.validate({
+    return function(data) ---@param data { fname: string }
+      Util.validate({
         data = { data, { "table" } },
         ["data.fname"] = { data.fname, { "string" } },
       })
 
-      for _, client in ipairs(Utils.get_clients()) do
+      for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
-          local cap = Utils.get_nested_path(
+          local cap = Util.get_nested_path(
             client,
             { "server_capabilities", "workspace", "fileOperations", method }
           )
-          if cap and Utils.matches_filters(cap.filters or {}, data.fname) then
+          if cap and Util.matches_filters(cap.filters or {}, data.fname) then
             local edit, mtd =
-              Utils.get_workspace_edit(("%sFiles"):format(method), client, data.fname)
+              Util.get_workspace_edit(("%sFiles"):format(method), client, data.fname)
             if edit and mtd then
-              require("lsp-file-operations.log").debug(("Applying %s edit"):format(mtd), edit)
+              Log.debug(("Applying %s edit"):format(mtd), edit)
               vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
             end
           end
@@ -109,25 +105,24 @@ local function gen_callback(method)
       end
     end
   elseif method == "willRename" then
-    ---@param data { new_name: string, old_name: string }
-    return function(data)
-      Utils.validate({
+    return function(data) ---@param data { new_name: string, old_name: string }
+      Util.validate({
         data = { data, { "table" } },
         ["data.new_name"] = { data.new_name, { "string" } },
         ["data.old_name"] = { data.old_name, { "string" } },
       })
 
       local old, new = data.old_name, data.new_name
-      for _, client in ipairs(Utils.get_clients()) do
+      for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
-          local cap = Utils.get_nested_path(
+          local cap = Util.get_nested_path(
             client,
             { "server_capabilities", "workspace", "fileOperations", method }
           )
-          if cap and Utils.matches_filters(cap.filters or {}, old) then
-            local edit, mtd = Utils.get_workspace_edit("willRenameFiles", client, old, new)
+          if cap and Util.matches_filters(cap.filters or {}, old) then
+            local edit, mtd = Util.get_workspace_edit("willRenameFiles", client, old, new)
             if edit and mtd then
-              require("lsp-file-operations.log").debug(("Applying %s edit"):format(mtd), edit)
+              Log.debug(("Applying %s edit"):format(mtd), edit)
               vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
             end
           end
@@ -140,12 +135,13 @@ end
 ---@param bufnr integer
 ---@param fname string
 local function delete_buf(bufnr, fname)
-  Utils.validate({
+  Util.validate({
     bufnr = { bufnr, { "number" } },
     fname = { fname, { "string" } },
   })
 
   if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_get_name(bufnr) == fname then
+    Log.debug("Deleting buffer with ID", bufnr)
     pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
   end
 end
@@ -167,7 +163,7 @@ end
 ---@field get_config fun(): config: LspFileOpsConfig
 ---@field log LspFileOps.Log
 ---@field set_config fun(cfg?: LspFileOpsConfig)
----@field utils LspFileOps.Utils
+---@field utils LspFileOps.Util
 ---@field willCreate fun(data: { fname: string })
 ---@field willDelete fun(data: { fname: string })
 ---@field willRename fun(data: { new_name: string, old_name: string })
@@ -213,43 +209,44 @@ end
 ---@param fname string
 ---@return boolean success
 function M.create(fname)
-  Utils.validate({ fname = { fname, { "string" } } })
+  Util.validate({ fname = { fname, { "string" } } })
   if fname == "" then
     return false
   end
   local is_dir = fname:sub(-1) == "/"
-  fname = Utils.strip_slash(fname)
+  fname = Util.strip_slash(fname)
 
-  local Log = require("lsp-file-operations.log")
-  if vim.uv.fs_stat(fname) ~= nil then -- Abort if target already exists
-    Log.debug("Target already exists:", fname)
+  if uv.fs_stat(fname) ~= nil then -- Abort if target already exists
+    Log.debug("Target file for `create()` already exists:", fname)
     return false
   end
 
   M.will_create({ fname = fname })
 
-  local dir = Utils.strip_slash(fname, ":h")
+  local dir = Util.strip_slash(fname, ":h")
   if vim.fn.isdirectory(dir) ~= 1 and vim.fn.mkdir(dir, "p") ~= 1 then
-    Log.error("Unable to create parent directories for:", fname)
+    Log.error("Unable to create parent directories for `create()`:", fname)
     return false
   end
 
   if is_dir then
-    vim.uv.fs_mkdir(fname, tonumber("755", 8))
+    uv.fs_mkdir(fname, tonumber("755", 8))
+    Log.debug("Created directory:", fname)
   else
-    local fd, err = vim.uv.fs_open(fname, "w", tonumber("644", 8))
+    local fd, err = uv.fs_open(fname, "w", tonumber("644", 8))
     if not fd then
-      require("lsp-file-operations.log").error("Failed to create file:", err)
+      Log.error("Failed to create file for `create()`:", err)
       return false
     end
-    vim.uv.fs_close(fd)
+    Log.debug("Created file:", fname)
+    uv.fs_close(fd)
   end
 
   M.did_create({ fname = fname })
   return (
     pcall(function()
       if not is_dir then
-        vim.cmd.edit(vim.fn.fnameescape(fname))
+        vim.cmd.edit({ args = { vim.fn.fnameescape(fname) } })
       end
     end)
   )
@@ -260,22 +257,24 @@ end
 ---@param fname string
 ---@return boolean success
 function M.delete(fname)
-  Utils.validate({ fname = { fname, { "string" } } })
+  Util.validate({ fname = { fname, { "string" } } })
   if fname == "" then
+    Log.error("Target file name for `delete()` is empty")
     return false
   end
 
-  fname = Utils.strip_slash(fname)
-  local stat = vim.uv.fs_stat(fname)
+  fname = Util.strip_slash(fname)
+  local stat = uv.fs_stat(fname)
   if not stat then
+    Log.error("Target file name for `delete()` does not exist")
     return false
   end
 
   M.will_delete({ fname = fname })
 
-  local rm_ok, rm_err = (stat.type == "directory" and vim.uv.fs_rmdir or vim.uv.fs_unlink)(fname)
+  local rm_ok, rm_err = (stat.type == "directory" and uv.fs_rmdir or uv.fs_unlink)(fname)
   if not rm_ok then
-    require("lsp-file-operations.log").error("Failed to delete:", rm_err)
+    Log.error("Failed to delete file for `delete()`:", rm_err)
     return false
   end
 
@@ -292,41 +291,40 @@ end
 ---@overload fun(new_name: string): success: boolean
 ---@overload fun(new_name: string, old_name: string): success: boolean
 function M.rename(new_name, old_name)
-  Utils.validate({
+  Util.validate({
     new_name = { new_name, { "string" } },
     old_name = { old_name, { "string", "nil" }, true },
   })
   old_name = old_name or vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
 
-  local Log = require("lsp-file-operations.log")
   if vim.list_contains({ new_name, old_name }, "") then
     Log.error("Either `new_name` or `old_name` for `rename()` are empty")
-    error("Either `new_name` or `old_name` for `rename()` are empty")
+    return false
   end
-  old_name, new_name = Utils.strip_slash(old_name), Utils.strip_slash(new_name)
+  old_name, new_name = Util.strip_slash(old_name), Util.strip_slash(new_name)
 
   M.will_rename({ new_name = new_name, old_name = old_name })
 
-  local dir = Utils.strip_slash(new_name, ":h")
+  local dir = Util.strip_slash(new_name, ":h")
   if vim.fn.isdirectory(dir) ~= 1 then
     vim.fn.mkdir(dir, "p")
   end
 
-  local rename_ok, rename_err = vim.uv.fs_rename(old_name, new_name)
+  local rename_ok, rename_err = uv.fs_rename(old_name, new_name)
   if not rename_ok then
-    Log.error("Failed to rename:", rename_err)
+    Log.error("Failed to rename for `rename()`:", rename_err)
     return false
   end
 
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    pcall(rename_buf, bufnr, old_name, new_name)
+    rename_buf(bufnr, old_name, new_name)
   end
 
   M.did_rename({ new_name = new_name, old_name = old_name })
   return true
 end
 
-local LFO = setmetatable(M, {
+local LFO = setmetatable(M, { ---@type LspFileOps
   __index = function(self, k)
     local raw = rawget(self, k) or nil
     if raw ~= nil then
@@ -335,49 +333,49 @@ local LFO = setmetatable(M, {
 
     local ok_mod, mod = pcall(require, "lsp-file-operations." .. k)
     if ok_mod and mod then
-      return Utils.rawset(self, k, mod)
+      return Util.rawset(self, k, mod)
     end
     if k == "get_config" then
-      return Utils.rawset(self, k, require("lsp-file-operations.config").get)
+      return Util.rawset(self, k, require("lsp-file-operations.config").get)
     end
     if k == "set_config" then
-      return Utils.rawset(self, k, require("lsp-file-operations.config").set)
+      return Util.rawset(self, k, require("lsp-file-operations.config").set)
     end
     if k == "didCreate" then
-      return Utils.rawset(self, k, M.did_create)
+      return Util.rawset(self, k, M.did_create)
     end
     if k == "didDelete" then
-      return Utils.rawset(self, k, M.did_delete)
+      return Util.rawset(self, k, M.did_delete)
     end
     if k == "didRename" then
-      return Utils.rawset(self, k, M.did_rename)
-    end
-    if k == "willCreate" then
-      return Utils.rawset(self, k, M.will_create)
-    end
-    if k == "willDelete" then
-      return Utils.rawset(self, k, M.will_delete)
-    end
-    if k == "willRename" then
-      return Utils.rawset(self, k, M.will_rename)
+      return Util.rawset(self, k, M.did_rename)
     end
     if k == "did-create" then
-      return Utils.rawset(self, k, M.did_create)
+      return Util.rawset(self, k, M.did_create)
     end
     if k == "did-delete" then
-      return Utils.rawset(self, k, M.did_delete)
+      return Util.rawset(self, k, M.did_delete)
     end
     if k == "did-rename" then
-      return Utils.rawset(self, k, M.did_rename)
+      return Util.rawset(self, k, M.did_rename)
+    end
+    if k == "willCreate" then
+      return Util.rawset(self, k, M.will_create)
+    end
+    if k == "willDelete" then
+      return Util.rawset(self, k, M.will_delete)
+    end
+    if k == "willRename" then
+      return Util.rawset(self, k, M.will_rename)
     end
     if k == "will-create" then
-      return Utils.rawset(self, k, M.will_create)
+      return Util.rawset(self, k, M.will_create)
     end
     if k == "will-delete" then
-      return Utils.rawset(self, k, M.will_delete)
+      return Util.rawset(self, k, M.will_delete)
     end
     if k == "will-rename" then
-      return Utils.rawset(self, k, M.will_rename)
+      return Util.rawset(self, k, M.will_rename)
     end
   end,
 })

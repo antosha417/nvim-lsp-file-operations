@@ -1,6 +1,6 @@
 ---@module "lsp-file-operations._meta"
 
----@class LspFileOps.Utils
+---@class LspFileOps.Util
 local M = {}
 
 ---Checks whether nvim is running on Windows.
@@ -9,6 +9,12 @@ local M = {}
 ---@nodiscard
 function M.is_windows()
   return vim.fn.has("win32") == 1
+end
+
+---@param mode string
+---@return integer fmode
+function M.fmode(mode)
+  return tonumber(mode, 8)
 end
 
 ---Get rid of all duplicates in input table.

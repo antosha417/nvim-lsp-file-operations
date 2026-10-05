@@ -30,7 +30,7 @@ vim.api.nvim_create_user_command("LFO", function(ctx)
 end, {
   nargs = "+",
   complete = function(_, line) ---@param line string
-    local args = require("lsp-file-operations.utils").dedup(vim.split(line, " ", {
+    local args = require("lsp-file-operations.util").dedup(vim.split(line, " ", {
       trimempty = false,
     }))
     local items = {} ---@type string[]

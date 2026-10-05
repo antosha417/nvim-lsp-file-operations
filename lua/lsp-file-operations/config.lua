@@ -1,6 +1,6 @@
 ---@module "lsp-file-operations._meta"
 
-local Utils = require("lsp-file-operations.utils")
+local Util = require("lsp-file-operations.util")
 local Log = require("lsp-file-operations.log")
 
 local default_config = { ---@type LspFileOpsConfig
@@ -25,7 +25,7 @@ local config = nil ---@type LspFileOpsConfig|nil|?
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations/autosave.lua
 ---@type fun(uris: string[])
 local save_buffers = vim.schedule_wrap(function(uris) ---@param uris string[]
-  Utils.validate({ uris = { uris, { "table" } } })
+  Util.validate({ uris = { uris, { "table" } } })
 
   for _, uri in ipairs(uris) do
     local bufnr = vim.uri_to_bufnr(uri)
@@ -51,7 +51,7 @@ end)
 ---@param workspace_edit lsp.WorkspaceEdit The standard LSP WorkspaceEdit object payload
 ---@return string[] uris Array of unique URIs
 local function extract_uris(workspace_edit)
-  Utils.validate({ workspace_edit = { workspace_edit, { "table" } } })
+  Util.validate({ workspace_edit = { workspace_edit, { "table" } } })
 
   local uris = {} ---@type string[]
   if not workspace_edit then
@@ -70,14 +70,14 @@ local function extract_uris(workspace_edit)
       end
     end
   end
-  return Utils.dedup(uris)
+  return Util.dedup(uris)
 end
 
 --- helper function to subscribe events to a given module callback
 ---@param op_events LspFileOpsEvents the table that maps modules to event strings
 ---@param subscribe fun(module: string, event: string) the function for how to subscribe a module to an event
 local function setup_events(op_events, subscribe)
-  Utils.validate({
+  Util.validate({
     op_events = { op_events, { "table" } },
     subscribe = { subscribe, { "function" } },
   })
@@ -127,10 +127,10 @@ end
 
 ---@param opts? LspFileOpsConfig
 function M.setup(opts)
-  Utils.validate({ opts = { opts, { "table", "nil" }, true } })
+  Util.validate({ opts = { opts, { "table", "nil" }, true } })
   opts = opts or {}
 
-  Utils.validate({
+  Util.validate({
     ["opts.auto_save"] = { opts.auto_save, { "boolean", "nil" }, true },
     ["opts.debug"] = { opts.debug, { "boolean", "nil" }, true },
     ["opts.operations"] = { opts.operations, { "table", "nil" }, true },
@@ -138,6 +138,8 @@ function M.setup(opts)
   })
 
   config = vim.tbl_deep_extend("force", default_config, opts)
+
+  Log.setup()
 
   if config.debug then
     Log.level = "debug"
@@ -159,10 +161,7 @@ function M.setup(opts)
       nvim_tree_api.events.subscribe(
         event,
         function(args) ---@param args { fname: string }|{ new_name: string, old_name: string }
-          local ok, mod = pcall(require, "lsp-file-operations")
-          if ok and mod then
-            mod[module](args)
-          end
+          M[module](args)
         end
       )
     end)
@@ -186,15 +185,11 @@ function M.setup(opts)
         ---@param args? { destination: string, source: string }|string
         ---@return neotree.event.Handler.Result|nil|? result
         handler = function(args)
-          if not args then
-            return
-          end
-          local mod_args = type(args) == "table"
-              and { new_name = args.destination, old_name = args.source }
-            or { fname = args } --[[@as { fname: string }|{ new_name: string, old_name: string }]]
-          local ok, mod = pcall(require, "lsp-file-operations")
-          if ok and mod then -- translate neo-tree arguemnts to the same format as nvim-tree
-            mod[module](mod_args)
+          if args then
+            M[module](
+              type(args) == "table" and { new_name = args.destination, old_name = args.source }
+                or { fname = args }
+            )
           end
         end,
       }
@@ -219,14 +214,11 @@ function M.setup(opts)
         group = "TriptychEvents",
         pattern = event,
         callback = function(ev)
-          local ok, mod = pcall(require, "lsp-file-operations")
-          if ok and mod then
-            mod[module](
-              (ev.data.from_path and ev.data.to_path)
-                  and { new_name = ev.data.to_path, old_name = ev.data.from_path }
-                or { fname = ev.data.path }
-            )
-          end
+          M[module](
+            (ev.data.from_path and ev.data.to_path)
+                and { new_name = ev.data.to_path, old_name = ev.data.from_path }
+              or { fname = ev.data.path }
+          )
         end,
       })
     end)

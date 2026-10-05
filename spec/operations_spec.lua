@@ -1,4 +1,3 @@
-local utils = require("lsp-file-operations.utils")
 local stub = require("luassert.stub")
 local assert = require("luassert")
 
@@ -84,7 +83,7 @@ end
 
 --- Run one of the will-*/did-* module callbacks against the given fake clients.
 local function run_with_clients(module_name, clients, data)
-  local get_clients = stub(utils, "get_clients").returns(clients)
+  local get_clients = stub(require("lsp-file-operations.util"), "get_clients").returns(clients)
   local ok, err = pcall(require("lsp-file-operations")[module_name], data)
   get_clients:revert()
   assert(ok, err)
