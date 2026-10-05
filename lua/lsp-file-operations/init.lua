@@ -163,7 +163,7 @@ end
 ---@field get_config fun(): config: LspFileOpsConfig
 ---@field log LspFileOps.Log
 ---@field set_config fun(cfg?: LspFileOpsConfig)
----@field utils LspFileOps.Util
+---@field util LspFileOps.Util
 ---@field willCreate fun(data: { fname: string })
 ---@field willDelete fun(data: { fname: string })
 ---@field willRename fun(data: { new_name: string, old_name: string })
