@@ -87,12 +87,12 @@ local function setup_events(op_events, subscribe)
   end
 
   local modules = { ---@type table<LspFileOpsConfig.Operations, string>
-    didCreateFiles = "did-create",
-    didDeleteFiles = "did-delete",
-    didRenameFiles = "did-rename",
-    willCreateFiles = "will-create",
-    willDeleteFiles = "will-delete",
-    willRenameFiles = "will-rename",
+    didCreateFiles = "did_create",
+    didDeleteFiles = "did_delete",
+    didRenameFiles = "did_rename",
+    willCreateFiles = "will_create",
+    willDeleteFiles = "will_delete",
+    willRenameFiles = "will_rename",
   }
   for operation, enabled in pairs(config.operations) do
     ---@cast operation LspFileOps.Operations
@@ -139,6 +139,12 @@ function M.setup(opts)
 
   config = vim.tbl_deep_extend("force", default_config, opts)
 
+  for k, v in pairs(config.operations) do
+    if type(v) ~= "boolean" then
+      config.operations[k] = default_config.operations[k]
+    end
+  end
+
   Log.setup()
 
   if config.debug then
@@ -161,7 +167,7 @@ function M.setup(opts)
       nvim_tree_api.events.subscribe(
         event,
         function(args) ---@param args { fname: string }|{ new_name: string, old_name: string }
-          M[module](args)
+          require("lsp-file-operations")[module](args)
         end
       )
     end)
@@ -182,11 +188,9 @@ function M.setup(opts)
       local sub_args = { ---@type neotree.event.Handler
         id = ("%s.%s"):format(module, event),
         event = event,
-        ---@param args? { destination: string, source: string }|string
-        ---@return neotree.event.Handler.Result|nil|? result
-        handler = function(args)
+        handler = function(args) ---@param args? { destination: string, source: string }|string
           if args then
-            M[module](
+            require("lsp-file-operations")[module](
               type(args) == "table" and { new_name = args.destination, old_name = args.source }
                 or { fname = args }
             )
@@ -214,7 +218,7 @@ function M.setup(opts)
         group = "TriptychEvents",
         pattern = event,
         callback = function(ev)
-          M[module](
+          require("lsp-file-operations")[module](
             (ev.data.from_path and ev.data.to_path)
                 and { new_name = ev.data.to_path, old_name = ev.data.from_path }
               or { fname = ev.data.path }
