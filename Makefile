@@ -1,4 +1,4 @@
-.PHONY: test test-all format clean all help
+.PHONY: all clean format help test test-all
 
 all: help
 
