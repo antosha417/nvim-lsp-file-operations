@@ -116,10 +116,13 @@ function M.setup()
   timer = uv.new_timer()
   if timer then
     timer:start(30000, 30000, function()
-      local fd, stat = uv.fs_open(OUTPUT, "w", Util.fmode("644")), uv.fs_stat(OUTPUT)
-      if fd and stat and stat.size > MAX_SIZE then
-        uv.fs_ftruncate(fd, 0)
-        uv.fs_close(fd)
+      local stat = uv.fs_stat(OUTPUT)
+      if stat and stat.size > MAX_SIZE then
+        local fd = uv.fs_open(OUTPUT, "w", Util.fmode("644"))
+        if fd then
+          uv.fs_ftruncate(fd, 0)
+          uv.fs_close(fd)
+        end
       end
     end)
 
