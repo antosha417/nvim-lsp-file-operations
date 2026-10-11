@@ -39,7 +39,7 @@ local function gen_callback(method)
         ["data.fname"] = { data.fname, { "string" } },
       })
 
-      local lsp_method = ("workspace/%sFiles"):format(method)
+      local mtd = ("workspace/%sFiles"):format(method)
       for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
           local cap = Util.get_nested_path(
@@ -48,8 +48,8 @@ local function gen_callback(method)
           )
           if cap and Util.matches_filters(cap.filters or {}, data.fname) then
             local params = { files = { { uri = vim.uri_from_fname(data.fname) } } }
-            Util.client_notify(client, lsp_method, params)
-            Log.debug(("Sending %s notification"):format(lsp_method), params)
+            Util.client_notify(client, mtd, params)
+            Log.debug(("Sending %s notification"):format(mtd), params)
           end
         end
       end
@@ -62,8 +62,7 @@ local function gen_callback(method)
         ["data.old_name"] = { data.old_name, { "string" } },
       })
 
-      local old, new = data.old_name, data.new_name
-      local lsp_method = ("workspace/%sFiles"):format(method)
+      local old, new, mtd = data.old_name, data.new_name, ("workspace/%sFiles"):format(method)
       for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
           local cap = Util.get_nested_path(
@@ -74,8 +73,8 @@ local function gen_callback(method)
             local params = {
               files = { { newUri = vim.uri_from_fname(new), oldUri = vim.uri_from_fname(old) } },
             }
-            Util.client_notify(client, lsp_method, params)
-            Log.debug(("Sending %s notification"):format(lsp_method), params)
+            Util.client_notify(client, mtd, params)
+            Log.debug(("Sending %s notification"):format(mtd), params)
           end
         end
       end
