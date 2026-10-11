@@ -73,7 +73,7 @@ local function extract_uris(workspace_edit)
   return Util.dedup(uris)
 end
 
---- helper function to subscribe events to a given module callback
+---Helper function to subscribe events to a given module callback
 ---@param op_events LspFileOpsEvents the table that maps modules to event strings
 ---@param subscribe fun(module: string, event: string) the function for how to subscribe a module to an event
 local function setup_events(op_events, subscribe)
@@ -151,82 +151,97 @@ function M.setup(opts)
     Log.level = "debug"
   end
 
-  local ok_nvim_tree, nvim_tree_api = pcall(require, "nvim-tree.api")
-  if ok_nvim_tree and nvim_tree_api then -- nvim-tree integration
-    Log.debug("Setting up nvim-tree integration")
+  local group = vim.api.nvim_create_augroup("LSPFileOps.Integrations", { clear = true })
+  if package.loaded["nvim-tree"] ~= nil then -- nvim-tree integration
+    vim.api.nvim_create_autocmd("FileType", {
+      group = group,
+      pattern = "NvimTree",
+      callback = function()
+        Log.debug("Setting up nvim-tree integration")
 
-    local ev = nvim_tree_api.events.Event
-    setup_events({
-      didCreateFiles = { ev.FileCreated, ev.FolderCreated },
-      didDeleteFiles = { ev.FileRemoved, ev.FolderRemoved },
-      didRenameFiles = { ev.NodeRenamed },
-      willCreateFiles = { ev.WillCreateFile },
-      willDeleteFiles = { ev.WillRemoveFile },
-      willRenameFiles = { ev.WillRenameNode },
-    }, function(module, event)
-      nvim_tree_api.events.subscribe(
-        event,
-        function(args) ---@param args { fname: string }|{ new_name: string, old_name: string }
-          require("lsp-file-operations")[module](args)
-        end
-      )
-    end)
+        local nvim_tree_api = require("nvim-tree.api")
+        local ev = nvim_tree_api.events.Event
+        setup_events({
+          didCreateFiles = { ev.FileCreated, ev.FolderCreated },
+          didDeleteFiles = { ev.FileRemoved, ev.FolderRemoved },
+          didRenameFiles = { ev.NodeRenamed },
+          willCreateFiles = { ev.WillCreateFile },
+          willDeleteFiles = { ev.WillRemoveFile },
+          willRenameFiles = { ev.WillRenameNode },
+        }, function(module, event)
+          nvim_tree_api.events.subscribe(event, require("lsp-file-operations")[module])
+        end)
+        Log.debug("nvim-tree integration setup complete")
+      end,
+    })
   end
 
-  local ok_neo_tree, neo_tree_events = pcall(require, "neo-tree.events")
-  if ok_neo_tree and neo_tree_events then -- neo-tree integration
-    Log.debug("Setting up neo-tree integration")
+  if package.loaded["neo-tree"] ~= nil then
+    vim.api.nvim_create_autocmd("FileType", {
+      group = group,
+      pattern = "neo-tree",
+      callback = function()
+        local neo_tree_events = require("neo-tree.events")
+        Log.debug("Setting up neo-tree integration")
 
-    setup_events({
-      didCreateFiles = { neo_tree_events.FILE_ADDED },
-      didDeleteFiles = { neo_tree_events.FILE_DELETED },
-      didRenameFiles = { neo_tree_events.FILE_RENAMED, neo_tree_events.FILE_MOVED },
-      willCreateFiles = { neo_tree_events.BEFORE_FILE_ADD },
-      willDeleteFiles = { neo_tree_events.BEFORE_FILE_DELETE },
-      willRenameFiles = { neo_tree_events.BEFORE_FILE_RENAME, neo_tree_events.BEFORE_FILE_MOVE },
-    }, function(module, event)
-      local sub_args = { ---@type neotree.event.Handler
-        id = ("%s.%s"):format(module, event),
-        event = event,
-        handler = function(args) ---@param args? { destination: string, source: string }|string
-          if args then
-            require("lsp-file-operations")[module](
-              type(args) == "table" and { new_name = args.destination, old_name = args.source }
-                or { fname = args }
-            )
-          end
-        end,
-      }
-      neo_tree_events.unsubscribe(sub_args) -- just in case setup is called twice, unsubscribe from event
-      neo_tree_events.subscribe(sub_args)
-    end)
-    Log.debug("Neo-tree integration setup complete")
+        setup_events({
+          didCreateFiles = { neo_tree_events.FILE_ADDED },
+          didDeleteFiles = { neo_tree_events.FILE_DELETED },
+          didRenameFiles = { neo_tree_events.FILE_RENAMED, neo_tree_events.FILE_MOVED },
+          willCreateFiles = { neo_tree_events.BEFORE_FILE_ADD },
+          willDeleteFiles = { neo_tree_events.BEFORE_FILE_DELETE },
+          willRenameFiles = { neo_tree_events.BEFORE_FILE_RENAME, neo_tree_events.BEFORE_FILE_MOVE },
+        }, function(module, event)
+          local sub_args = { ---@type neotree.event.Handler
+            id = ("%s.%s"):format(module, event),
+            event = event,
+            handler = function(args) ---@param args? { destination: string, source: string }|string
+              if args then
+                require("lsp-file-operations")[module](
+                  type(args) == "table" and { new_name = args.destination, old_name = args.source }
+                    or { fname = args }
+                )
+              end
+            end,
+          }
+          neo_tree_events.unsubscribe(sub_args) -- just in case setup is called twice, unsubscribe from event
+          neo_tree_events.subscribe(sub_args)
+        end)
+        Log.debug("Neo-tree integration setup complete")
+      end,
+    })
   end
 
-  if pcall(require, "triptych") then -- triptych integration
-    Log.debug("Setting up triptych integration")
+  if package.loaded["triptych"] ~= nil then -- triptych integration
+    vim.api.nvim_create_autocmd("FileType", {
+      group = group,
+      pattern = "triptych",
+      callback = function()
+        Log.debug("Setting up triptych integration")
 
-    setup_events({
-      didCreateFiles = { "TriptychDidCreateNode" },
-      didDeleteFiles = { "TriptychDidDeleteNode" },
-      didRenameFiles = { "TriptychDidMoveNode" },
-      willCreateFiles = { "TriptychWillCreateNode" },
-      willDeleteFiles = { "TriptychWillDeleteNode" },
-      willRenameFiles = { "TriptychWillMoveNode" },
-    }, function(module, event)
-      vim.api.nvim_create_autocmd("User", {
-        group = "TriptychEvents",
-        pattern = event,
-        callback = function(ev)
-          require("lsp-file-operations")[module](
-            (ev.data.from_path and ev.data.to_path)
-                and { new_name = ev.data.to_path, old_name = ev.data.from_path }
-              or { fname = ev.data.path }
-          )
-        end,
-      })
-    end)
-    Log.debug("triptych integration setup complete")
+        setup_events({
+          didCreateFiles = { "TriptychDidCreateNode" },
+          didDeleteFiles = { "TriptychDidDeleteNode" },
+          didRenameFiles = { "TriptychDidMoveNode" },
+          willCreateFiles = { "TriptychWillCreateNode" },
+          willDeleteFiles = { "TriptychWillDeleteNode" },
+          willRenameFiles = { "TriptychWillMoveNode" },
+        }, function(module, event)
+          vim.api.nvim_create_autocmd("User", {
+            group = "TriptychEvents",
+            pattern = event,
+            callback = function(ev)
+              require("lsp-file-operations")[module](
+                (ev.data.from_path and ev.data.to_path)
+                    and { new_name = ev.data.to_path, old_name = ev.data.from_path }
+                  or { fname = ev.data.path }
+              )
+            end,
+          })
+        end)
+        Log.debug("triptych integration setup complete")
+      end,
+    })
   end
 
   if config.auto_save then

@@ -52,10 +52,12 @@ Full implementation of all `workspace.fileOperations` for [the current LSP spec]
 
 ## Installation
 
-> [!IMPORTANT]
+> [!WARNING]
 > **The order in which the plugins are loaded matters!**
 >
-> For example, `neo-tree.nvim` must load before `nvim-lsp-file-operations` for this to work,
+> Avoid installing this plugin as a dependency for either `nvim-tree.lua`, `neo-tree` and/or `triptych`!
+>
+> For example, `neo-tree.nvim` must already be loaded before `nvim-lsp-file-operations` for this to work,
 > so `nvim-lsp-file-operations` depends on `neo-tree.nvim`, not the other way around!
 
 <details>
