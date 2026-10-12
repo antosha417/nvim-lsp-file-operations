@@ -86,7 +86,8 @@ require("pckr").add({
 return {
   {
     "antosha417/nvim-lsp-file-operations",
-    cmd = 'LFO',
+    -- cmd = 'LFO', -- Uncomment this if you wish to lazy-load by using the `:LFO` user command
+
     -- Uncomment whichever supported plugin(s) you use
     -- dependencies = {
     --   "nvim-tree/nvim-tree.lua",
