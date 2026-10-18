@@ -4,6 +4,99 @@ local uv = vim.uv or vim.loop
 local Log = require("lsp-file-operations.log")
 local Util = require("lsp-file-operations.util")
 
+---@generic T: table, F
+---@param t T
+---@param k any
+---@param fallback F
+---@return F fallback
+local function get(t, k, fallback)
+  return Util.get(t, k, function()
+    return Util.rawset(t, k, fallback)
+  end, true)
+end
+
+---@class LspFileOps
+---@field ["did-create"] fun(data: { fname: string })
+---@field ["did-delete"] fun(data: { fname: string })
+---@field ["did-rename"] fun(data: { new_name: string, old_name: string })
+---@field ["will-create"] fun(data: { fname: string })
+---@field ["will-delete"] fun(data: { fname: string })
+---@field ["will-rename"] fun(data: { new_name: string, old_name: string })
+---@field config LspFileOps.Config
+---@field didCreate fun(data: { fname: string })
+---@field didDelete fun(data: { fname: string })
+---@field didRename fun(data: { new_name: string, old_name: string })
+---@field did_create fun(data: { fname: string })
+---@field did_delete fun(data: { fname: string })
+---@field did_rename fun(data: { new_name: string, old_name: string })
+---@field get_config fun(): config: LspFileOpsConfig
+---@field log LspFileOps.Log
+---@field set_config fun(cfg?: LspFileOpsConfig)
+---@field util LspFileOps.Util
+---@field willCreate fun(data: { fname: string })
+---@field willDelete fun(data: { fname: string })
+---@field willRename fun(data: { new_name: string, old_name: string })
+---@field will_create fun(data: { fname: string })
+---@field will_delete fun(data: { fname: string })
+---@field will_rename fun(data: { new_name: string, old_name: string })
+local M = {}
+
+setmetatable(M, {
+  __index = function(self, k) ---@param self LspFileOps
+    local raw = Util.get(self, k)
+    if raw ~= nil then
+      return raw
+    end
+
+    local ok_mod, mod = pcall(require, "lsp-file-operations." .. k)
+    if ok_mod and mod then
+      return get(self, k, mod)
+    end
+    if k == "get_config" then
+      return get(self, k, self.config.get)
+    end
+    if k == "set_config" then
+      return get(self, k, self.config.set)
+    end
+    if k == "didCreate" then
+      return get(self, k, self.did_create)
+    end
+    if k == "didDelete" then
+      return get(self, k, self.did_delete)
+    end
+    if k == "didRename" then
+      return get(self, k, self.did_rename)
+    end
+    if k == "did-create" then
+      return get(self, k, self.did_create)
+    end
+    if k == "did-delete" then
+      return get(self, k, self.did_delete)
+    end
+    if k == "did-rename" then
+      return get(self, k, self.did_rename)
+    end
+    if k == "willCreate" then
+      return get(self, k, self.will_create)
+    end
+    if k == "willDelete" then
+      return get(self, k, self.will_delete)
+    end
+    if k == "willRename" then
+      return get(self, k, self.will_rename)
+    end
+    if k == "will-create" then
+      return get(self, k, self.will_create)
+    end
+    if k == "will-delete" then
+      return get(self, k, self.will_delete)
+    end
+    if k == "will-rename" then
+      return get(self, k, self.will_rename)
+    end
+  end,
+})
+
 ---@param bufnr integer
 ---@param old_name string
 ---@param new_name string
@@ -19,7 +112,7 @@ local function rename_buf(bufnr, old_name, new_name)
     vim.api.nvim_buf_call(bufnr, function()
       pcall(vim.cmd.edit, { bang = true, mods = { silent = true } })
       if
-        require("lsp-file-operations.config").get().auto_save
+        M.config.get().auto_save
         and vim.api.nvim_get_option_value("modified", { buf = bufnr })
       then
         pcall(vim.cmd.write)
@@ -145,35 +238,9 @@ local function delete_buf(bufnr, fname)
   end
 end
 
----@class LspFileOps
----@field ["did-create"] fun(data: { fname: string })
----@field ["did-delete"] fun(data: { fname: string })
----@field ["did-rename"] fun(data: { new_name: string, old_name: string })
----@field ["will-create"] fun(data: { fname: string })
----@field ["will-delete"] fun(data: { fname: string })
----@field ["will-rename"] fun(data: { new_name: string, old_name: string })
----@field config LspFileOps.Config
----@field didCreate fun(data: { fname: string })
----@field didDelete fun(data: { fname: string })
----@field didRename fun(data: { new_name: string, old_name: string })
----@field did_create fun(data: { fname: string })
----@field did_delete fun(data: { fname: string })
----@field did_rename fun(data: { new_name: string, old_name: string })
----@field get_config fun(): config: LspFileOpsConfig
----@field log LspFileOps.Log
----@field set_config fun(cfg?: LspFileOpsConfig)
----@field util LspFileOps.Util
----@field willCreate fun(data: { fname: string })
----@field willDelete fun(data: { fname: string })
----@field willRename fun(data: { new_name: string, old_name: string })
----@field will_create fun(data: { fname: string })
----@field will_delete fun(data: { fname: string })
----@field will_rename fun(data: { new_name: string, old_name: string })
-local M = {}
-
 ---@param opts? LspFileOpsConfig
 function M.setup(opts)
-  require("lsp-file-operations.config").setup(opts)
+  M.config.setup(opts)
 end
 
 M.did_create = gen_callback("didCreate")
@@ -187,8 +254,7 @@ M.will_rename = gen_callback("willRename")
 ---`vim.lsp.protocol.make_client_capabilities()` and sent to the LSP server.
 ---@return lsp.ClientCapabilities capabilities
 function M.default_capabilities()
-  local Config = require("lsp-file-operations.config")
-  local config = Config.get() or Config.get_defaults()
+  local config = M.config.get() or M.config.get_defaults()
   local result = { workspace = { fileOperations = {} } } ---@type lsp.ClientCapabilities
   for operation, capability in pairs({
     didCreateFiles = "didCreate",
@@ -323,61 +389,5 @@ function M.rename(new_name, old_name)
   return true
 end
 
-local LFO = setmetatable(M, { ---@type LspFileOps
-  __index = function(self, k)
-    local raw = rawget(self, k) or nil
-    if raw ~= nil then
-      return raw
-    end
-
-    local ok_mod, mod = pcall(require, "lsp-file-operations." .. k)
-    if ok_mod and mod then
-      return Util.rawset(self, k, mod)
-    end
-    if k == "get_config" then
-      return Util.rawset(self, k, require("lsp-file-operations.config").get)
-    end
-    if k == "set_config" then
-      return Util.rawset(self, k, require("lsp-file-operations.config").set)
-    end
-    if k == "didCreate" then
-      return Util.rawset(self, k, M.did_create)
-    end
-    if k == "didDelete" then
-      return Util.rawset(self, k, M.did_delete)
-    end
-    if k == "didRename" then
-      return Util.rawset(self, k, M.did_rename)
-    end
-    if k == "did-create" then
-      return Util.rawset(self, k, M.did_create)
-    end
-    if k == "did-delete" then
-      return Util.rawset(self, k, M.did_delete)
-    end
-    if k == "did-rename" then
-      return Util.rawset(self, k, M.did_rename)
-    end
-    if k == "willCreate" then
-      return Util.rawset(self, k, M.will_create)
-    end
-    if k == "willDelete" then
-      return Util.rawset(self, k, M.will_delete)
-    end
-    if k == "willRename" then
-      return Util.rawset(self, k, M.will_rename)
-    end
-    if k == "will-create" then
-      return Util.rawset(self, k, M.will_create)
-    end
-    if k == "will-delete" then
-      return Util.rawset(self, k, M.will_delete)
-    end
-    if k == "will-rename" then
-      return Util.rawset(self, k, M.will_rename)
-    end
-  end,
-})
-
-return LFO
+return M
 -- vim: set ts=2 sts=2 sw=2 et ai si sta:

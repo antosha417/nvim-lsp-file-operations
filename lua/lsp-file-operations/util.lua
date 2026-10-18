@@ -353,4 +353,35 @@ function M.rawset(t, k, v)
   return v
 end
 
+---@generic T: table, F, K, V
+---@param t T<K, V>
+---@param k K
+---@param fallback F|fun(): raw: F
+---@param is_rawset boolean
+---@return F|V?
+---@overload fun(t: T<K, V>, k: K): raw: V?
+---@overload fun(t: T<K, V>, k: K, fallback: F): raw: F|V
+---@overload fun(t: T<K, V>, k: K, fallback: F, is_rawset: false): raw: F|V
+---@overload fun(t: T<K, V>, k: K, fallback: (fun(): raw: F), is_rawset: true): raw: F|V
+function M.get(t, k, fallback, is_rawset)
+  if is_rawset == nil then
+    is_rawset = false
+  end
+
+  if k ~= nil then
+    local raw = rawget(t, k) or nil --[[@as unknown|nil|?]]
+    if raw ~= nil or fallback == nil then
+      return raw
+    end
+
+    if is_rawset then
+      ---@cast fallback fun(): any
+      local _, res = pcall(fallback)
+      return res
+    end
+    ---@cast fallback any
+    return fallback
+  end
+end
+
 return M
