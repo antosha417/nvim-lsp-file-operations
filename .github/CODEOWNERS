@@ -3,6 +3,7 @@
 /.github/CODEOWNERS @DrKJeff16
 /.github/workflows/* @DrKJeff16 @sghng
 /.gitignore @antosha417 @sghng
+/.pre-commit-config.yaml @DrKJeff16
 /LICENSE @antosha417
 /Makefile @sghng @DrKJeff16
 /README.md @antosha417 @DrKJeff16 @sghng

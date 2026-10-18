@@ -1,0 +1,30 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.6
+    hooks:
+      - id: remove-crlf
+      - id: forbid-crlf
+  - repo: local
+    hooks:
+      - id: lint
+        name: Run StyLua
+        language: system
+        entry: stylua .
+        files: (lua|spec)/.*\.lua$
+        verbose: true
+      - id: format
+        name: Run Selene
+        language: system
+        entry: selene .
+        files: (lua|spec)/.*\.lua$
+        verbose: true
+      - id: run_tests
+        name: Generate local help tags
+        language: system
+        entry: make
+        files: (lua|spec)/.*\.lua$
+        verbose: true
