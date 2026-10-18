@@ -26,15 +26,13 @@ end
 --- ---
 ---@generic T: table
 ---@param T T
----@param key? string|integer
+---@param key? any
 ---@return T NT
 ---@nodiscard
 function M.dedup(T, key)
   M.validate({
     T = { T, { "table" } },
-    key = { key, { "string", "nil" }, true },
   })
-  key = (key and key ~= "") and key or nil
   if vim.tbl_isempty(T) then
     return T
   end
@@ -42,11 +40,11 @@ function M.dedup(T, key)
   local names, NT = {}, {}
   for k, v in pairs(T) do
     local not_dup = false
-    if (type(v) == "table" and not key) or type(v) ~= "table" then
+    if (type(v) == "table" and key == nil) or type(v) ~= "table" then
       not_dup = not vim.tbl_contains(NT, function(val)
         return vim.deep_equal(val, v)
       end, { predicate = true })
-    elseif type(v) == "table" and key then
+    elseif type(v) == "table" and key ~= nil then
       not_dup = not vim.tbl_contains(names, function(val)
         return vim.deep_equal(val, v[key])
       end, { predicate = true })
@@ -92,6 +90,21 @@ end
 function M.get_clients()
   ---@diagnostic disable-next-line:deprecated
   return vim.fn.has("nvim-0.10") == 1 and vim.lsp.get_clients() or vim.lsp.get_active_clients()
+end
+
+---@param client vim.lsp.Client
+---@param method vim.lsp.protocol.Method
+---@param edit lsp.WorkspaceEdit
+---@return boolean success
+function M.client_apply_workspace_edit(client, method, edit)
+  M.validate({
+    client = { client, { "table" } },
+    method = { method, { "string" } },
+    edit = { edit, { "table" } },
+  })
+
+  require("lsp-file-operations.log").debug(("Applying %s edit"):format(edit), edit)
+  return (pcall(vim.lsp.util.apply_workspace_edit, edit, client.offset_encoding))
 end
 
 ---@param client vim.lsp.Client
@@ -210,10 +223,8 @@ function M.matches_filters(filters, name)
   return false
 end
 
----@return lsp.WorkspaceEdit|nil|? workspace_edit
----@return string|nil|? method
----@overload fun(request: "willCreateFiles"|"willDeleteFiles", client: vim.lsp.Client, fname: string): workspace_edit: lsp.WorkspaceEdit|nil|?, method: string|nil|?
----@overload fun(request: "willRenameFiles", client: vim.lsp.Client, old_name: string, new_name: string): workspace_edit: lsp.WorkspaceEdit|nil|?, method: string|nil|?
+---@overload fun(request: "willCreateFiles"|"willDeleteFiles", client: vim.lsp.Client, fname: string): workspace_edit: lsp.WorkspaceEdit|nil|?
+---@overload fun(request: "willRenameFiles", client: vim.lsp.Client, old_name: string, new_name: string): workspace_edit: lsp.WorkspaceEdit|nil|?
 function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   M.validate({
     request = { request, { "string" } },
@@ -244,11 +255,11 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   ---@type boolean, { err?: lsp.ResponseError, result?: lsp.WorkspaceEdit }|nil|?
   local success, resp = pcall(function()
     local args = { client, method, params, require("lsp-file-operations").get_config().timeout_ms }
-    return client.request_sync(unpack(args, vim.fn.has("nvim-0.11") == 1 and 1 or 2, #args)), method
+    return client.request_sync(unpack(args, vim.fn.has("nvim-0.11") == 1 and 1 or 2, #args))
   end)
   if success and resp and resp.result then
     Log.debug(("Got response for `%s`"):format(method), resp)
-    return resp.result, method
+    return resp.result
   end
 
   if not success then

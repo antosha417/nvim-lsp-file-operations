@@ -3,6 +3,17 @@
 local Util = require("lsp-file-operations.util")
 local Log = require("lsp-file-operations.log")
 
+---@generic T: table, F
+---@param t T
+---@param k any
+---@param fallback F
+---@return F fallback
+local function get(t, k, fallback)
+  return Util.get(t, k, function()
+    return Util.rawset(t, k, fallback)
+  end, true)
+end
+
 local default_config = { ---@type LspFileOpsConfig
   auto_save = false,
   debug = false,
@@ -44,10 +55,11 @@ local save_buffers = vim.schedule_wrap(function(uris) ---@param uris string[]
   end
 end)
 
----Parses an incoming LSP WorkspaceEdit structure and extracts modified files
+---Parse an incoming `lsp.WorkspaceEdit` structure and extracts modified files.
 ---
 ---Sourced from `nvim-file-operations`, all credits go to @Crysthamus.
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations/autosave.lua
+---
 ---@param workspace_edit lsp.WorkspaceEdit The standard LSP WorkspaceEdit object payload
 ---@return string[] uris Array of unique URIs
 local function extract_uris(workspace_edit)
@@ -107,23 +119,43 @@ local function setup_events(op_events, subscribe)
 end
 
 ---@class LspFileOps.Config
+---@field get fun(): config: LspFileOpsConfig
+---@field get_defaults fun(): default_config: LspFileOpsConfig
+---@field set fun(cfg?: LspFileOpsConfig)
 local M = {}
 
----@return LspFileOpsConfig default_config
-function M.get_defaults()
-  return default_config
-end
+setmetatable(M, {
+  __index = function(self, k) ---@param self LspFileOps.Config
+    local raw = Util.get(self, k)
+    if raw ~= nil then
+      return raw
+    end
 
----@return LspFileOpsConfig config
-function M.get()
-  return config
-end
+    if type(k) ~= "string" then
+      return
+    end
 
----@param cfg? LspFileOpsConfig
-function M.set(cfg)
-  config = cfg
-  Log.debug("Config modified to", config)
-end
+    ---@cast k string
+    if k == "get" then
+      return get(self, k, function()
+        return config
+      end)
+    end
+
+    if k == "get_defaults" then
+      return get(self, k, function()
+        return default_config
+      end)
+    end
+
+    if k == "set" then
+      return get(self, k, function(cfg)
+        config = cfg
+        Log.debug("Config modified to", config)
+      end)
+    end
+  end,
+})
 
 ---@param opts? LspFileOpsConfig
 function M.setup(opts)
@@ -247,9 +279,13 @@ function M.setup(opts)
   if config.auto_save then
     local cb = vim.lsp.util.apply_workspace_edit
 
+    --- Applies a `WorkspaceEdit`.
+    ---
     ---@param workspace_edit lsp.WorkspaceEdit
-    ---@param position_encoding 'utf-16'|'utf-32'|'utf-8'
-    vim.lsp.util.apply_workspace_edit = function(workspace_edit, position_encoding) ---@diagnostic disable-line:duplicate-set-field
+    ---@param position_encoding 'utf-8'|'utf-16'|'utf-32' (required)
+    ---@see https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit
+    ---@diagnostic disable-next-line:duplicate-set-field
+    vim.lsp.util.apply_workspace_edit = function(workspace_edit, position_encoding)
       if pcall(cb, workspace_edit, position_encoding) then
         save_buffers(extract_uris(workspace_edit))
       else

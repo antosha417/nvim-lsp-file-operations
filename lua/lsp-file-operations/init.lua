@@ -15,6 +15,19 @@ local function get(t, k, fallback)
   end, true)
 end
 
+---@param path string
+---@return boolean success
+local function mkdir(path)
+  Util.validate({ path = { path, { "string" } } })
+
+  if vim.fn.has("nvim-0.13") == 1 then
+    Log.debug("Neovim version >=v0.13.0, using `vim.fs.mkdir()`")
+    return (pcall(vim.fs.mkdir, path, { parents = true }))
+  end
+  Log.debug("Neovim version <v0.13.0, using `vim.fn.mkdir()`")
+  return vim.fn.mkdir(path, "p") == 1
+end
+
 ---@class LspFileOps
 ---@field ["did-create"] fun(data: { fname: string })
 ---@field ["did-delete"] fun(data: { fname: string })
@@ -125,6 +138,7 @@ end
 ---@overload fun(method: "didCreate"|"didDelete"|"willCreate"|"willDelete"): callback: fun(data: { fname: string })
 ---@overload fun(method: "didRename"|"willRename"): callback: fun(data: { new_name: string, old_name: string })
 local function gen_callback(method)
+  local mtd = ("workspace/%sFiles"):format(method) --[[@as vim.lsp.protocol.Method]]
   if vim.list_contains({ "didCreate", "didDelete" }, method) then
     return function(data) ---@param data { fname: string }
       Util.validate({
@@ -132,7 +146,6 @@ local function gen_callback(method)
         ["data.fname"] = { data.fname, { "string" } },
       })
 
-      local mtd = ("workspace/%sFiles"):format(method)
       for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
           local cap = Util.get_nested_path(
@@ -155,7 +168,7 @@ local function gen_callback(method)
         ["data.old_name"] = { data.old_name, { "string" } },
       })
 
-      local old, new, mtd = data.old_name, data.new_name, ("workspace/%sFiles"):format(method)
+      local old, new = data.old_name, data.new_name
       for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
           local cap = Util.get_nested_path(
@@ -186,11 +199,9 @@ local function gen_callback(method)
             { "server_capabilities", "workspace", "fileOperations", method }
           )
           if cap and Util.matches_filters(cap.filters or {}, data.fname) then
-            local edit, mtd =
-              Util.get_workspace_edit(("%sFiles"):format(method), client, data.fname)
-            if edit and mtd then
-              Log.debug(("Applying %s edit"):format(mtd), edit)
-              vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
+            local edit = Util.get_workspace_edit(("%sFiles"):format(method), client, data.fname)
+            if edit then
+              Util.client_apply_workspace_edit(client, mtd, edit)
             end
           end
         end
@@ -212,10 +223,9 @@ local function gen_callback(method)
             { "server_capabilities", "workspace", "fileOperations", method }
           )
           if cap and Util.matches_filters(cap.filters or {}, old) then
-            local edit, mtd = Util.get_workspace_edit("willRenameFiles", client, old, new)
-            if edit and mtd then
-              Log.debug(("Applying %s edit"):format(mtd), edit)
-              vim.lsp.util.apply_workspace_edit(edit, client.offset_encoding)
+            local edit = Util.get_workspace_edit("willRenameFiles", client, old, new)
+            if edit then
+              Util.client_apply_workspace_edit(client, mtd, edit)
             end
           end
         end
@@ -226,16 +236,19 @@ end
 
 ---@param bufnr integer
 ---@param fname string
+---@return boolean success
 local function delete_buf(bufnr, fname)
   Util.validate({
     bufnr = { bufnr, { "number" } },
     fname = { fname, { "string" } },
   })
 
-  if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_get_name(bufnr) == fname then
-    Log.debug("Deleting buffer with ID", bufnr)
-    pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
+  if not vim.api.nvim_buf_is_valid(bufnr) or vim.api.nvim_buf_get_name(bufnr) ~= fname then
+    return true
   end
+
+  Log.debug("Deleting buffer with ID", bufnr)
+  return (pcall(vim.api.nvim_buf_delete, bufnr, { force = true }))
 end
 
 ---@param opts? LspFileOpsConfig
@@ -243,15 +256,17 @@ function M.setup(opts)
   M.config.setup(opts)
 end
 
-M.did_create = gen_callback("didCreate")
+M.did_create = gen_callback("didCreate") --- Wrapper for the `$workspace/didCreateFiles` method
 M.did_delete = gen_callback("didDelete")
 M.did_rename = gen_callback("didRename")
 M.will_create = gen_callback("willCreate")
 M.will_delete = gen_callback("willDelete")
 M.will_rename = gen_callback("willRename")
 
----The extra client capabilities provided by this plugin. To be merged with
+---The extra client capabilities provided by this plugin to be merged with
 ---`vim.lsp.protocol.make_client_capabilities()` and sent to the LSP server.
+---
+---@see vim.lsp.protocol.make_client_capabilities
 ---@return lsp.ClientCapabilities capabilities
 function M.default_capabilities()
   local config = M.config.get() or M.config.get_defaults()
@@ -289,13 +304,13 @@ function M.create(fname)
   M.will_create({ fname = fname })
 
   local dir = Util.strip_slash(fname, ":h")
-  if vim.fn.isdirectory(dir) ~= 1 and vim.fn.mkdir(dir, "p") ~= 1 then
+  if vim.fn.isdirectory(dir) ~= 1 and mkdir(dir) then
     Log.error("Unable to create parent directories for `create()`:", fname)
     return false
   end
 
   if is_dir then
-    uv.fs_mkdir(fname, tonumber("755", 8))
+    assert(mkdir(fname))
     Log.debug("Created directory:", fname)
   else
     local fd, err = uv.fs_open(fname, "w", tonumber("644", 8))
@@ -344,7 +359,9 @@ function M.delete(fname)
   end
 
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    delete_buf(bufnr, fname)
+    if not delete_buf(bufnr, fname) then
+      Log.warn("Unable to delete buffer ID", bufnr)
+    end
   end
 
   M.did_delete({ fname = fname })
@@ -372,7 +389,7 @@ function M.rename(new_name, old_name)
 
   local dir = Util.strip_slash(new_name, ":h")
   if vim.fn.isdirectory(dir) ~= 1 then
-    vim.fn.mkdir(dir, "p")
+    assert(mkdir(dir), ("Unable to create parent directory for target: `%s`"):format(dir))
   end
 
   local rename_ok, rename_err = uv.fs_rename(old_name, new_name)

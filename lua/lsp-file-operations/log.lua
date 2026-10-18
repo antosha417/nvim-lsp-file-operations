@@ -1,3 +1,5 @@
+---@alias LspFileOps.Log.LogLevels "debug"|"info"|"error"|"warn"
+
 local MAX_SIZE = 1048576 -- 1MiB
 local OUTPUT = vim.fs.joinpath(vim.fn.stdpath("cache"), "lsp-file-operations.log")
 local uv = vim.uv or vim.loop
@@ -54,12 +56,12 @@ local function write_output(msg)
 end
 
 ---@class LspFileOps.Log
----@field level "debug"|"info"|"error"|"warn"
+---@field level LspFileOps.Log.LogLevels
 local M = {}
 
 M.level = "error"
 
----@param level "debug"|"info"|"error"|"warn"
+---@param level LspFileOps.Log.LogLevels
 ---@return fun(...: any) cb
 local function gen_log_func(level)
   Util.validate({ level = { level, { "string" } } })
@@ -120,8 +122,14 @@ function M.setup()
       if stat and stat.size > MAX_SIZE then
         local fd = uv.fs_open(OUTPUT, "w", Util.fmode("644"))
         if fd then
-          uv.fs_ftruncate(fd, 0)
-          uv.fs_close(fd)
+          assert(
+            uv.fs_ftruncate(fd, 0),
+            ("nvim-lsp-file-operations - Log file could not be truncated: %s"):format(OUTPUT)
+          )
+          assert(
+            uv.fs_close(fd),
+            ("nvim-lsp-file-operations - Unable to close file descriptor for %s"):format(OUTPUT)
+          )
         end
       end
     end)
@@ -136,6 +144,8 @@ function M.setup()
         end
       end,
     })
+
+    vim.g.lfo_log_setup = 1
   end
 end
 
