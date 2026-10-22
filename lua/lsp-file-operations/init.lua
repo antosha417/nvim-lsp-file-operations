@@ -1,7 +1,6 @@
 ---@module "lsp-file-operations._meta"
 
 local uv = vim.uv or vim.loop
-local Log = require("lsp-file-operations.log")
 local Util = require("lsp-file-operations.util")
 
 ---@generic T: table, F
@@ -20,6 +19,7 @@ end
 local function mkdir(path)
   Util.validate({ path = { path, { "string" } } })
 
+  local Log = require("lsp-file-operations.log")
   if vim.fn.has("nvim-0.13") == 1 then
     Log.debug("Neovim version >=v0.13.0, using `vim.fs.mkdir()`")
     return (pcall(vim.fs.mkdir, path, { parents = true }))
@@ -45,6 +45,7 @@ end
 ---@field get_config fun(): config: LspFileOpsConfig
 ---@field log LspFileOps.Log
 ---@field set_config fun(cfg?: LspFileOpsConfig)
+---@field setup fun(opts?: LspFileOpsConfig)
 ---@field util LspFileOps.Util
 ---@field willCreate fun(data: { fname: string })
 ---@field willDelete fun(data: { fname: string })
@@ -61,15 +62,17 @@ setmetatable(M, {
       return raw
     end
 
+    if type(k) ~= "string" then
+      return
+    end
+
+    ---@cast k string
     local ok_mod, mod = pcall(require, "lsp-file-operations." .. k)
     if ok_mod and mod then
       return get(self, k, mod)
     end
     if k == "get_config" then
       return get(self, k, self.config.get)
-    end
-    if k == "set_config" then
-      return get(self, k, self.config.set)
     end
     if k == "didCreate" then
       return get(self, k, self.did_create)
@@ -88,6 +91,12 @@ setmetatable(M, {
     end
     if k == "did-rename" then
       return get(self, k, self.did_rename)
+    end
+    if k == "set_config" then
+      return get(self, k, self.config.set)
+    end
+    if k == "setup" then
+      return get(self, k, self.config.setup)
     end
     if k == "willCreate" then
       return get(self, k, self.will_create)
@@ -128,7 +137,7 @@ local function rename_buf(bufnr, old_name, new_name)
         M.config.get().auto_save
         and vim.api.nvim_get_option_value("modified", { buf = bufnr })
       then
-        pcall(vim.cmd.write)
+        pcall(vim.cmd.write, { mods = { noautocmd = true } })
       end
       vim.cmd.checktime()
     end)
@@ -155,7 +164,7 @@ local function gen_callback(method)
           if cap and Util.matches_filters(cap.filters or {}, data.fname) then
             local params = { files = { { uri = vim.uri_from_fname(data.fname) } } }
             Util.client_notify(client, mtd, params)
-            Log.debug(("Sending %s notification"):format(mtd), params)
+            M.log.debug(("Sending %s notification"):format(mtd), params)
           end
         end
       end
@@ -180,7 +189,7 @@ local function gen_callback(method)
               files = { { newUri = vim.uri_from_fname(new), oldUri = vim.uri_from_fname(old) } },
             }
             Util.client_notify(client, mtd, params)
-            Log.debug(("Sending %s notification"):format(mtd), params)
+            M.log.debug(("Sending %s notification"):format(mtd), params)
           end
         end
       end
@@ -247,13 +256,8 @@ local function delete_buf(bufnr, fname)
     return true
   end
 
-  Log.debug("Deleting buffer with ID", bufnr)
+  M.log.debug("Deleting buffer with ID", bufnr)
   return (pcall(vim.api.nvim_buf_delete, bufnr, { force = true }))
-end
-
----@param opts? LspFileOpsConfig
-function M.setup(opts)
-  M.config.setup(opts)
 end
 
 M.did_create = gen_callback("didCreate") --- Wrapper for the `$workspace/didCreateFiles` method
@@ -297,7 +301,7 @@ function M.create(fname)
   fname = Util.strip_slash(fname)
 
   if uv.fs_stat(fname) ~= nil then -- Abort if target already exists
-    Log.debug("Target file for `create()` already exists:", fname)
+    M.log.debug("Target file for `create()` already exists:", fname)
     return false
   end
 
@@ -305,20 +309,20 @@ function M.create(fname)
 
   local dir = Util.strip_slash(fname, ":h")
   if vim.fn.isdirectory(dir) ~= 1 and mkdir(dir) then
-    Log.error("Unable to create parent directories for `create()`:", fname)
+    M.log.error("Unable to create parent directories for `create()`:", fname)
     return false
   end
 
   if is_dir then
     assert(mkdir(fname))
-    Log.debug("Created directory:", fname)
+    M.log.debug("Created directory:", fname)
   else
     local fd, err = uv.fs_open(fname, "w", tonumber("644", 8))
     if not fd then
-      Log.error("Failed to create file for `create()`:", err)
+      M.log.error("Failed to create file for `create()`:", err)
       return false
     end
-    Log.debug("Created file:", fname)
+    M.log.debug("Created file:", fname)
     uv.fs_close(fd)
   end
 
@@ -339,14 +343,14 @@ end
 function M.delete(fname)
   Util.validate({ fname = { fname, { "string" } } })
   if fname == "" then
-    Log.error("Target file name for `delete()` is empty")
+    M.log.error("Target file name for `delete()` is empty")
     return false
   end
 
   fname = Util.strip_slash(fname)
   local stat = uv.fs_stat(fname)
   if not stat then
-    Log.error("Target file name for `delete()` does not exist")
+    M.log.error("Target file name for `delete()` does not exist")
     return false
   end
 
@@ -354,13 +358,13 @@ function M.delete(fname)
 
   local rm_ok, rm_err = (stat.type == "directory" and uv.fs_rmdir or uv.fs_unlink)(fname)
   if not rm_ok then
-    Log.error("Failed to delete file for `delete()`:", rm_err)
+    M.log.error("Failed to delete file for `delete()`:", rm_err)
     return false
   end
 
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     if not delete_buf(bufnr, fname) then
-      Log.warn("Unable to delete buffer ID", bufnr)
+      M.log.warn("Unable to delete buffer ID", bufnr)
     end
   end
 
@@ -380,7 +384,7 @@ function M.rename(new_name, old_name)
   old_name = old_name or vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
 
   if vim.list_contains({ new_name, old_name }, "") then
-    Log.error("Either `new_name` or `old_name` for `rename()` are empty")
+    M.log.error("Either `new_name` or `old_name` for `rename()` are empty")
     return false
   end
   old_name, new_name = Util.strip_slash(old_name), Util.strip_slash(new_name)
@@ -388,13 +392,14 @@ function M.rename(new_name, old_name)
   M.will_rename({ new_name = new_name, old_name = old_name })
 
   local dir = Util.strip_slash(new_name, ":h")
-  if vim.fn.isdirectory(dir) ~= 1 then
-    assert(mkdir(dir), ("Unable to create parent directory for target: `%s`"):format(dir))
+  if vim.fn.isdirectory(dir) ~= 1 and not mkdir(dir) then
+    M.log.error("Unable to create parent directory for target", dir)
+    return false
   end
 
   local rename_ok, rename_err = uv.fs_rename(old_name, new_name)
   if not rename_ok then
-    Log.error("Failed to rename for `rename()`:", rename_err)
+    M.log.error("Failed to rename for `rename()`:", rename_err)
     return false
   end
 
