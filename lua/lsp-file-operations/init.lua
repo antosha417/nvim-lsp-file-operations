@@ -308,7 +308,7 @@ function M.create(fname)
   M.will_create({ fname = fname })
 
   local dir = Util.strip_slash(fname, ":h")
-  if vim.fn.isdirectory(dir) ~= 1 and mkdir(dir) then
+  if vim.fn.isdirectory(dir) ~= 1 and not mkdir(dir) then
     M.log.error("Unable to create parent directories for `create()`:", fname)
     return false
   end
