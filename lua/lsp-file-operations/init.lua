@@ -55,95 +55,6 @@ end
 ---@field will_rename fun(data: { new_name: string, old_name: string })
 local M = {}
 
-setmetatable(M, {
-  __index = function(self, k) ---@param self LspFileOps
-    local raw = Util.get(self, k)
-    if raw ~= nil then
-      return raw
-    end
-
-    if type(k) ~= "string" then
-      return
-    end
-
-    ---@cast k string
-    local ok_mod, mod = pcall(require, "lsp-file-operations." .. k)
-    if ok_mod and mod then
-      return get(self, k, mod)
-    end
-    if k == "get_config" then
-      return get(self, k, self.config.get)
-    end
-    if k == "didCreate" then
-      return get(self, k, self.did_create)
-    end
-    if k == "didDelete" then
-      return get(self, k, self.did_delete)
-    end
-    if k == "didRename" then
-      return get(self, k, self.did_rename)
-    end
-    if k == "did-create" then
-      return get(self, k, self.did_create)
-    end
-    if k == "did-delete" then
-      return get(self, k, self.did_delete)
-    end
-    if k == "did-rename" then
-      return get(self, k, self.did_rename)
-    end
-    if k == "set_config" then
-      return get(self, k, self.config.set)
-    end
-    if k == "setup" then
-      return get(self, k, self.config.setup)
-    end
-    if k == "willCreate" then
-      return get(self, k, self.will_create)
-    end
-    if k == "willDelete" then
-      return get(self, k, self.will_delete)
-    end
-    if k == "willRename" then
-      return get(self, k, self.will_rename)
-    end
-    if k == "will-create" then
-      return get(self, k, self.will_create)
-    end
-    if k == "will-delete" then
-      return get(self, k, self.will_delete)
-    end
-    if k == "will-rename" then
-      return get(self, k, self.will_rename)
-    end
-  end,
-})
-
----@param bufnr integer
----@param old_name string
----@param new_name string
-local function rename_buf(bufnr, old_name, new_name)
-  Util.validate({
-    bufnr = { bufnr, { "number" } },
-    old_name = { old_name, { "string" } },
-    new_name = { new_name, { "string" } },
-  })
-
-  if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_get_name(bufnr) == old_name then
-    vim.api.nvim_buf_set_name(bufnr, new_name)
-    vim.api.nvim_buf_call(bufnr, function()
-      pcall(vim.cmd.edit, { bang = true, mods = { silent = true } })
-      if
-        M.config.get().auto_save
-        and vim.api.nvim_get_option_value("modified", { buf = bufnr })
-      then
-        pcall(vim.cmd.write, { mods = { noautocmd = true } })
-      end
-      vim.cmd.checktime()
-    end)
-  end
-end
-
 ---@overload fun(method: "didCreate"|"didDelete"|"willCreate"|"willDelete"): callback: fun(data: { fname: string })
 ---@overload fun(method: "didRename"|"willRename"): callback: fun(data: { new_name: string, old_name: string })
 local function gen_callback(method)
@@ -243,6 +154,113 @@ local function gen_callback(method)
   end
 end
 
+setmetatable(M, {
+  __index = function(self, k) ---@param self LspFileOps
+    local raw = Util.get(self, k)
+    if raw ~= nil then
+      return raw
+    end
+
+    if type(k) ~= "string" then
+      return
+    end
+
+    ---@cast k string
+    local ok_mod, mod = pcall(require, "lsp-file-operations." .. k)
+    if ok_mod and mod then
+      return get(self, k, mod)
+    end
+    if k == "get_config" then
+      return get(self, k, self.config.get)
+    end
+    if k == "did_create" then
+      return get(self, k, gen_callback("didCreate"))
+    end
+    if k == "did_delete" then
+      return get(self, k, gen_callback("didDelete"))
+    end
+    if k == "did_rename" then
+      return get(self, k, gen_callback("didRename"))
+    end
+    if k == "didCreate" then
+      return get(self, k, self.did_create)
+    end
+    if k == "didDelete" then
+      return get(self, k, self.did_delete)
+    end
+    if k == "didRename" then
+      return get(self, k, self.did_rename)
+    end
+    if k == "did-create" then
+      return get(self, k, self.did_create)
+    end
+    if k == "did-delete" then
+      return get(self, k, self.did_delete)
+    end
+    if k == "did-rename" then
+      return get(self, k, self.did_rename)
+    end
+    if k == "set_config" then
+      return get(self, k, self.config.set)
+    end
+    if k == "setup" then
+      return get(self, k, self.config.setup)
+    end
+    if k == "will_create" then
+      return get(self, k, gen_callback("willCreate"))
+    end
+    if k == "will_delete" then
+      return get(self, k, gen_callback("willDelete"))
+    end
+    if k == "will_rename" then
+      return get(self, k, gen_callback("willRename"))
+    end
+    if k == "willCreate" then
+      return get(self, k, self.will_create)
+    end
+    if k == "willDelete" then
+      return get(self, k, self.will_delete)
+    end
+    if k == "willRename" then
+      return get(self, k, self.will_rename)
+    end
+    if k == "will-create" then
+      return get(self, k, self.will_create)
+    end
+    if k == "will-delete" then
+      return get(self, k, self.will_delete)
+    end
+    if k == "will-rename" then
+      return get(self, k, self.will_rename)
+    end
+  end,
+})
+
+---@param bufnr integer
+---@param old_name string
+---@param new_name string
+local function rename_buf(bufnr, old_name, new_name)
+  Util.validate({
+    bufnr = { bufnr, { "number" } },
+    old_name = { old_name, { "string" } },
+    new_name = { new_name, { "string" } },
+  })
+
+  if vim.api.nvim_buf_is_valid(bufnr) and vim.api.nvim_buf_get_name(bufnr) == old_name then
+    vim.api.nvim_buf_set_name(bufnr, new_name)
+    vim.api.nvim_buf_call(bufnr, function()
+      pcall(vim.cmd.edit, { bang = true, mods = { silent = true } })
+      if
+        M.config.get().auto_save
+        and vim.api.nvim_get_option_value("modified", { buf = bufnr })
+      then
+        pcall(vim.cmd.write, { mods = { noautocmd = true } })
+      end
+      vim.cmd.checktime()
+    end)
+  end
+end
+
 ---@param bufnr integer
 ---@param fname string
 ---@return boolean success
@@ -259,13 +277,6 @@ local function delete_buf(bufnr, fname)
   M.log.debug("Deleting buffer with ID", bufnr)
   return (pcall(vim.api.nvim_buf_delete, bufnr, { force = true }))
 end
-
-M.did_create = gen_callback("didCreate") --- Wrapper for the `$workspace/didCreateFiles` method
-M.did_delete = gen_callback("didDelete")
-M.did_rename = gen_callback("didRename")
-M.will_create = gen_callback("willCreate")
-M.will_delete = gen_callback("willDelete")
-M.will_rename = gen_callback("willRename")
 
 ---The extra client capabilities provided by this plugin to be merged with
 ---`vim.lsp.protocol.make_client_capabilities()` and sent to the LSP server.
