@@ -1,10 +1,18 @@
 local assert = require("luassert") --[[@as Luassert]]
 
-describe(":LFO user command", function()
+describe("user command", function()
   describe("is available", function()
+    before_each(function()
+      package.loaded["lsp-file-operations"] = nil
+      package.loaded["lsp-file-operations.config"] = nil
+      package.loaded["lsp-file-operations.log"] = nil
+      package.loaded["lsp-file-operations.util"] = nil
+    end)
+
     it("without setup", function()
       assert.is_function(vim.cmd.LFO)
     end)
+
     it("after setup", function()
       assert.is_true((pcall(require("lsp-file-operations").setup)))
       assert.is_function(vim.cmd.LFO)
@@ -13,6 +21,11 @@ describe(":LFO user command", function()
 
   describe("will fail when", function()
     before_each(function()
+      package.loaded["lsp-file-operations"] = nil
+      package.loaded["lsp-file-operations.config"] = nil
+      package.loaded["lsp-file-operations.log"] = nil
+      package.loaded["lsp-file-operations.util"] = nil
+
       require("lsp-file-operations").setup()
     end)
 

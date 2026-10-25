@@ -1,11 +1,18 @@
-local lfo = require("lsp-file-operations")
 local assert = require("luassert") --[[@as Luassert]]
 
 describe("lsp-file-operations", function()
   describe("default_capabilities", function()
-    local saved_config
+    local saved_config ---@type LFOConfig
+    local lfo ---@type LFO
 
     before_each(function()
+      package.loaded["lsp-file-operations"] = nil
+      package.loaded["lsp-file-operations.config"] = nil
+      package.loaded["lsp-file-operations.log"] = nil
+      package.loaded["lsp-file-operations.util"] = nil
+
+      lfo = require("lsp-file-operations")
+      lfo.setup()
       saved_config = lfo.get_config()
     end)
 
@@ -14,7 +21,7 @@ describe("lsp-file-operations", function()
     end)
 
     it("enables all six file operations by default (before setup)", function()
-      lfo.set_config(nil)
+      lfo.set_config()
       assert.are.same({
         workspace = {
           fileOperations = {

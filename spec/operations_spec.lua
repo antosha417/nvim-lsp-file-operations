@@ -1,26 +1,26 @@
 local stub = require("luassert.stub")
 local assert = require("luassert")
 
----@class LspFileOps.Spec.ClientNotifyCall
+---@class LFO.Spec.ClientNotifyCall
 ---@field method vim.lsp.protocol.Method.ClientToServer.Request
 ---@field params? table
 
----@class LspFileOps.Spec.ClientRequestCall: LspFileOps.Spec.ClientNotifyCall
+---@class LFO.Spec.ClientRequestCall: LFO.Spec.ClientNotifyCall
 ---@field params table
 ---@field timeout_ms? integer
 
----@class LspFileOps.Spec.Client: vim.lsp.Client
----@field notify_calls LspFileOps.Spec.ClientNotifyCall[]
----@field request_calls LspFileOps.Spec.ClientRequestCall[]
+---@class LFO.Spec.Client: vim.lsp.Client
+---@field notify_calls LFO.Spec.ClientNotifyCall[]
+---@field request_calls LFO.Spec.ClientRequestCall[]
 
 --- Build a fake LSP client.
 ---@param cap_key? string capability key under workspace.fileOperations (e.g. "didCreate")
 ---@param filters? lsp.FileOperationFilter[] for the capability
 ---@param response? table what request_sync should return (for will-* operations)
----@return LspFileOps.Spec.Client client
+---@return LFO.Spec.Client client
 local function make_client(cap_key, filters, response)
   ---@diagnostic disable-next-line:missing-fields
-  local client = { ---@type LspFileOps.Spec.Client
+  local client = { ---@type LFO.Spec.Client
     initialized = true,
     offset_encoding = "utf-16",
     server_capabilities = { workspace = { fileOperations = {} } },
@@ -29,23 +29,25 @@ local function make_client(cap_key, filters, response)
     response = response,
   }
   if cap_key then
-    client.server_capabilities.workspace.fileOperations[cap_key] =
-      { filters = filters or { { pattern = { glob = "**/*.lua" } } } }
+    client.server_capabilities.workspace.fileOperations[cap_key] = {
+      filters = filters or { { pattern = { glob = "**/*.lua" } } },
+    }
   end
+
   -- WARN: Does not tolerate both call styles: client:notify(method, params) (>=0.11)
   -- and client.notify(method, params) (legacy dot call, no self).
   -- Need to specify whether it is legacy or not!
   if vim.fn.has("nvim-0.11") == 1 then
     ---@param method vim.lsp.protocol.Method.ClientToServer.Request
     ---@param params? table
-    function client:notify(method, params)
+    client.notify = function(self, method, params)
       table.insert(self.notify_calls, { method = method, params = params })
     end
 
     ---@param method vim.lsp.protocol.Method.ClientToServer.Request
     ---@param params table
     ---@param timeout_ms? integer
-    function client:request_sync(method, params, timeout_ms)
+    client.request_sync = function(self, method, params, timeout_ms)
       table.insert(
         self.request_calls,
         { method = method, params = params, timeout_ms = timeout_ms }
@@ -58,14 +60,14 @@ local function make_client(cap_key, filters, response)
   else
     ---@param method vim.lsp.protocol.Method.ClientToServer.Request
     ---@param params? table
-    function client.notify(method, params)
+    client.notify = function(method, params)
       table.insert(client.notify_calls, { method = method, params = params })
     end
 
     ---@param method vim.lsp.protocol.Method.ClientToServer.Request
     ---@param params table
     ---@param timeout_ms? integer
-    function client.request_sync(method, params, timeout_ms)
+    client.request_sync = function(method, params, timeout_ms)
       table.insert(
         client.request_calls,
         { method = method, params = params, timeout_ms = timeout_ms }
@@ -81,7 +83,10 @@ local function make_client(cap_key, filters, response)
   return client
 end
 
---- Run one of the will-*/did-* module callbacks against the given fake clients.
+---Run one of the will-*/did-* module callbacks against the given fake clients.
+---
+---@overload fun(module_name: string, clients: LFO.Spec.Client[], data: { fname: string })
+---@overload fun(module_name: string, clients: LFO.Spec.Client[], data: { new_name: string, old_name: string })
 local function run_with_clients(module_name, clients, data)
   local get_clients = stub(require("lsp-file-operations.util"), "get_clients").returns(clients)
   local ok, err = pcall(require("lsp-file-operations")[module_name], data)
@@ -92,14 +97,14 @@ end
 describe("did-* operations", function()
   local fname = vim.fs.joinpath(vim.fn.tempname(), "test.lua")
 
-  for _, case in ipairs({
-    { module = "did-create", cap = "didCreate", method = "workspace/didCreateFiles" },
-    { module = "did-delete", cap = "didDelete", method = "workspace/didDeleteFiles" },
+  for module, case in pairs({
+    ["did-create"] = { cap = "didCreate", method = "workspace/didCreateFiles" },
+    ["did-delete"] = { cap = "didDelete", method = "workspace/didDeleteFiles" },
   }) do
-    describe(case.module, function()
+    describe(module, function()
       it("notifies clients that support the capability", function()
         local client = make_client(case.cap)
-        run_with_clients(case.module, { client }, { fname = fname })
+        run_with_clients(module, { client }, { fname = fname })
         assert.are.equal(1, #client.notify_calls)
         assert.are.equal(case.method, client.notify_calls[1].method)
         assert.are.same(
@@ -110,20 +115,20 @@ describe("did-* operations", function()
 
       it("does not notify clients lacking the capability", function()
         local client = make_client()
-        run_with_clients(case.module, { client }, { fname = fname })
+        run_with_clients(module, { client }, { fname = fname })
         assert.are.equal(0, #client.notify_calls)
       end)
 
       it("does not notify when the file does not match the filters", function()
         local client = make_client(case.cap, { { pattern = { glob = "**/*.py" } } })
-        run_with_clients(case.module, { client }, { fname = fname })
+        run_with_clients(module, { client }, { fname = fname })
         assert.are.equal(0, #client.notify_calls)
       end)
 
       it("skips uninitialized clients", function()
         local client = make_client(case.cap)
         client.initialized = nil
-        run_with_clients(case.module, { client }, { fname = fname })
+        run_with_clients(module, { client }, { fname = fname })
         assert.are.equal(0, #client.notify_calls)
       end)
     end)
@@ -159,20 +164,26 @@ end)
 describe("will-* operations", function()
   local fname = vim.fs.joinpath(vim.fn.tempname(), "test.lua")
   local edit = { changes = { ["file:///dummy"] = {} } }
+  local default_config ---@type LFOConfig
 
   before_each(function()
+    default_config = require("lsp-file-operations").get_config()
     require("lsp-file-operations").set_config({ timeout_ms = 1000 })
   end)
 
-  for _, case in ipairs({
-    { module = "will-create", cap = "willCreate", method = "workspace/willCreateFiles" },
-    { module = "will-delete", cap = "willDelete", method = "workspace/willDeleteFiles" },
+  after_each(function()
+    require("lsp-file-operations").set_config(default_config)
+  end)
+
+  for module, case in pairs({
+    ["will-create"] = { cap = "willCreate", method = "workspace/willCreateFiles" },
+    ["will-delete"] = { cap = "willDelete", method = "workspace/willDeleteFiles" },
   }) do
-    describe(case.module, function()
+    describe(module, function()
       it("request an edit and applies it", function()
         local client = make_client(case.cap, nil, { result = edit })
         local apply = stub(vim.lsp.util, "apply_workspace_edit")
-        run_with_clients(case.module, { client }, { fname = fname })
+        run_with_clients(module, { client }, { fname = fname })
         assert.are.equal(1, #client.request_calls)
         assert.are.equal(case.method, client.request_calls[1].method)
         assert.are.same(
@@ -185,14 +196,14 @@ describe("will-* operations", function()
 
       it("do not request from clients lacking the capability", function()
         local client = make_client(nil, nil, { result = edit })
-        run_with_clients(case.module, { client }, { fname = fname })
+        run_with_clients(module, { client }, { fname = fname })
         assert.are.equal(0, #client.request_calls)
       end)
 
       it("do not apply an edit when the request errors", function()
         local client = make_client(case.cap, nil, { err = "boom" })
         local apply = stub(vim.lsp.util, "apply_workspace_edit")
-        run_with_clients(case.module, { client }, { fname = fname })
+        run_with_clients(module, { client }, { fname = fname })
         assert.stub(apply).was.not_called()
         apply:revert()
       end)
@@ -200,7 +211,7 @@ describe("will-* operations", function()
       it("do not apply an edit on an empty response (timeout)", function()
         local client = make_client(case.cap, nil, nil)
         local apply = stub(vim.lsp.util, "apply_workspace_edit")
-        run_with_clients(case.module, { client }, { fname = fname })
+        run_with_clients(module, { client }, { fname = fname })
         assert.stub(apply).was.not_called()
         apply:revert()
       end)
