@@ -1,6 +1,6 @@
 ---@meta
 
----@alias LspFileOps.Operations
+---@alias LFO.Operations
 ---|'didCreateFiles'
 ---|'didDeleteFiles'
 ---|'didRenameFiles'
@@ -8,7 +8,7 @@
 ---|'willDeleteFiles'
 ---|'willRenameFiles'
 
----@class (exact) LspFileOpsConfig.Operations
+---@class (exact) LFOConfig.Operations
 ---@field didCreateFiles? boolean
 ---@field didDeleteFiles? boolean
 ---@field didRenameFiles? boolean
@@ -16,7 +16,7 @@
 ---@field willDeleteFiles? boolean
 ---@field willRenameFiles? boolean
 
----@class (exact) LspFileOpsEvents: LspFileOpsConfig.Operations
+---@class (exact) LFOEvents: LFOConfig.Operations
 ---@field didCreateFiles string[]
 ---@field didDeleteFiles string[]
 ---@field didRenameFiles string[]
@@ -24,14 +24,14 @@
 ---@field willDeleteFiles string[]
 ---@field willRenameFiles string[]
 
----@class (exact) LspFileOpsConfig
+---@class (exact) LFOConfig
 ---@field auto_save? boolean
 ---@field debug? boolean
----@field operations? LspFileOpsConfig.Operations
+---@field operations? LFOConfig.Operations
 ---@field timeout_ms? integer
 
 ---Non-legacy validation spec (>=v0.11)
----@class LspFileOps.ValidateSpec
+---@class LFO.ValidateSpec
 ---@field [1] any
 ---@field [2] vim.validate.Validator
 ---@field [3]? boolean

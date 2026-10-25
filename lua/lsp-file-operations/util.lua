@@ -1,6 +1,6 @@
 ---@module "lsp-file-operations._meta"
 
----@class LspFileOps.Util
+---@class LFO.Util
 local M = {}
 
 ---Checks whether nvim is running on Windows.
@@ -14,6 +14,8 @@ end
 ---@param mode string
 ---@return integer fmode
 function M.fmode(mode)
+  M.validate({ mode = { mode, { "string" } } })
+
   return tonumber(mode, 8)
 end
 
@@ -26,8 +28,9 @@ end
 --- ---
 ---@generic T: table
 ---@param T T
----@param key? any
+---@param key any
 ---@return T NT
+---@overload fun(T: T): NT: T
 ---@nodiscard
 function M.dedup(T, key)
   M.validate({
@@ -63,7 +66,7 @@ end
 
 ---Dynamic `vim.validate()` wrapper. Covers both legacy and newer implementations.
 --- ---
----@param T table<string, vim.validate.Spec|LspFileOps.ValidateSpec>
+---@param T table<string, vim.validate.Spec|LFO.ValidateSpec>
 function M.validate(T)
   -- Both APIs accept at most 3 spec elements: value, validator, optional/msg.
   -- On >=0.11 the call is positional: vim.validate(name, value, validator, optional).
@@ -75,7 +78,7 @@ function M.validate(T)
   end
 
   if vim.fn.has("nvim-0.11") == 1 then
-    ---@cast T LspFileOps.ValidateSpec
+    ---@cast T LFO.ValidateSpec
     for name, spec in pairs(T) do
       table.insert(spec, 1, name)
       vim.validate(unpack(spec))
@@ -109,7 +112,8 @@ end
 
 ---@param client vim.lsp.Client
 ---@param method vim.lsp.protocol.Method
----@param params? table
+---@param params table
+---@overload fun(client: vim.lsp.Client, method: vim.lsp.protocol.Method)
 function M.client_notify(client, method, params)
   M.validate({
     client = { client, { "table" } },
@@ -340,18 +344,20 @@ function M.rstrip(char, str)
   return str
 end
 
+---@param path string
+---@param mods string
+---@return string stripped_path
 ---@overload fun(path: string): stripped_path: string
----@overload fun(path: string, mods: string): stripped_path: string
 ---@nodiscard
 function M.strip_slash(path, mods)
   M.validate({
     path = { path, { "string" } },
     mods = { mods, { "string", "nil" }, true },
   })
-  return M.rstrip(
-    M.is_windows() and "\\" or "/",
-    vim.fn.fnamemodify(path, (mods and mods ~= "") and mods or ":p")
-  )
+
+  local slash = M.is_windows() and "\\" or "/"
+  path = M.rstrip(slash, vim.fn.fnamemodify(path, ":p"))
+  return M.rstrip(slash, vim.fn.fnamemodify(path, (mods and mods ~= "") and mods or ":p"))
 end
 
 ---@generic T: table, V

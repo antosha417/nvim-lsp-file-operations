@@ -1,7 +1,6 @@
 ---@module "lsp-file-operations._meta"
 
 local uv = vim.uv or vim.loop
-local Util = require("lsp-file-operations.util")
 
 ---@generic T: table, F
 ---@param t T
@@ -9,44 +8,31 @@ local Util = require("lsp-file-operations.util")
 ---@param fallback F
 ---@return F fallback
 local function get(t, k, fallback)
+  local Util = require("lsp-file-operations.util")
   return Util.get(t, k, function()
     return Util.rawset(t, k, fallback)
   end, true)
 end
 
----@param path string
----@return boolean success
-local function mkdir(path)
-  Util.validate({ path = { path, { "string" } } })
-
-  local Log = require("lsp-file-operations.log")
-  if vim.fn.has("nvim-0.13") == 1 then
-    Log.debug("Neovim version >=v0.13.0, using `vim.fs.mkdir()`")
-    return (pcall(vim.fs.mkdir, path, { parents = true }))
-  end
-  Log.debug("Neovim version <v0.13.0, using `vim.fn.mkdir()`")
-  return vim.fn.mkdir(path, "p") == 1
-end
-
----@class LspFileOps
+---@class LFO
 ---@field ["did-create"] fun(data: { fname: string })
 ---@field ["did-delete"] fun(data: { fname: string })
 ---@field ["did-rename"] fun(data: { new_name: string, old_name: string })
 ---@field ["will-create"] fun(data: { fname: string })
 ---@field ["will-delete"] fun(data: { fname: string })
 ---@field ["will-rename"] fun(data: { new_name: string, old_name: string })
----@field config LspFileOps.Config
+---@field config LFO.Config
 ---@field didCreate fun(data: { fname: string })
 ---@field didDelete fun(data: { fname: string })
 ---@field didRename fun(data: { new_name: string, old_name: string })
 ---@field did_create fun(data: { fname: string })
 ---@field did_delete fun(data: { fname: string })
 ---@field did_rename fun(data: { new_name: string, old_name: string })
----@field get_config fun(): config: LspFileOpsConfig
----@field log LspFileOps.Log
----@field set_config fun(cfg?: LspFileOpsConfig)
----@field setup fun(opts?: LspFileOpsConfig)
----@field util LspFileOps.Util
+---@field get_config fun(): config: LFOConfig
+---@field log LFO.Log
+---@field set_config (fun())|(fun(cfg: LFOConfig))
+---@field setup (fun())|(fun(opts: LFOConfig))
+---@field util LFO.Util
 ---@field willCreate fun(data: { fname: string })
 ---@field willDelete fun(data: { fname: string })
 ---@field willRename fun(data: { new_name: string, old_name: string })
@@ -58,6 +44,7 @@ local M = {}
 ---@overload fun(method: "didCreate"|"didDelete"|"willCreate"|"willDelete"): callback: fun(data: { fname: string })
 ---@overload fun(method: "didRename"|"willRename"): callback: fun(data: { new_name: string, old_name: string })
 local function gen_callback(method)
+  local Util = require("lsp-file-operations.util")
   local mtd = ("workspace/%sFiles"):format(method) --[[@as vim.lsp.protocol.Method]]
   if vim.list_contains({ "didCreate", "didDelete" }, method) then
     return function(data) ---@param data { fname: string }
@@ -155,8 +142,8 @@ local function gen_callback(method)
 end
 
 setmetatable(M, {
-  __index = function(self, k) ---@param self LspFileOps
-    local raw = Util.get(self, k)
+  __index = function(self, k) ---@param self LFO
+    local raw = require("lsp-file-operations.util").get(self, k)
     if raw ~= nil then
       return raw
     end
@@ -240,7 +227,7 @@ setmetatable(M, {
 ---@param old_name string
 ---@param new_name string
 local function rename_buf(bufnr, old_name, new_name)
-  Util.validate({
+  M.util.validate({
     bufnr = { bufnr, { "number" } },
     old_name = { old_name, { "string" } },
     new_name = { new_name, { "string" } },
@@ -265,7 +252,7 @@ end
 ---@param fname string
 ---@return boolean success
 local function delete_buf(bufnr, fname)
-  Util.validate({
+  M.util.validate({
     bufnr = { bufnr, { "number" } },
     fname = { fname, { "string" } },
   })
@@ -299,48 +286,88 @@ function M.default_capabilities()
   return result
 end
 
+---@param path string
+---@return boolean success
+local function mkdir(path)
+  M.util.validate({ path = { path, { "string" } } })
+
+  local result ---@type boolean
+  if vim.fn.has("nvim-0.13") == 1 then
+    M.log.debug("Neovim version >=v0.13.0, using `vim.fs.mkdir()`")
+    result = (pcall(vim.fs.mkdir, path, { parents = true }))
+  else
+    M.log.debug("Neovim version <v0.13.0, using `vim.fn.mkdir()`")
+    result = vim.fn.mkdir(path, "p") == 1
+  end
+  return result
+end
+
 ---Sourced from `Crysthamus/nvim-file-operations`:
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
+---
 ---@param fname string
+---@param opts { dir?: boolean, overwrite?: boolean }
 ---@return boolean success
-function M.create(fname)
-  Util.validate({ fname = { fname, { "string" } } })
+---@overload fun(fname: string): success: boolean
+function M.create(fname, opts)
+  M.util.validate({
+    fname = { fname, { "string" } },
+    opts = { opts, { "table", "nil" }, true },
+  })
+  opts = opts or {}
+  M.util.validate({
+    ["opts.dir"] = { opts.dir, { "boolean", "nil" }, true },
+    ["opts.overwrite"] = { opts.overwrite, { "boolean", "nil" }, true },
+  })
+  if opts.dir == nil then
+    opts.dir = false
+  end
+  if opts.overwrite == nil then
+    opts.overwrite = false
+  end
+
   if fname == "" then
     return false
   end
-  local is_dir = fname:sub(-1) == "/"
-  fname = Util.strip_slash(fname)
 
-  if uv.fs_stat(fname) ~= nil then -- Abort if target already exists
+  if fname:sub(-1) == "/" then
+    opts.dir = true
+  end
+
+  fname = M.util.strip_slash(fname)
+
+  if uv.fs_stat(fname) ~= nil and not opts.overwrite then
     M.log.debug("Target file for `create()` already exists:", fname)
     return false
   end
 
   M.will_create({ fname = fname })
 
-  local dir = Util.strip_slash(fname, ":h")
+  local dir = M.util.strip_slash(fname, ":h")
   if vim.fn.isdirectory(dir) ~= 1 and not mkdir(dir) then
-    M.log.error("Unable to create parent directories for `create()`:", fname)
+    M.log.notify_error("Unable to create parent directories for `create()`:", fname)
     return false
   end
 
-  if is_dir then
+  if opts.dir then
     assert(mkdir(fname))
     M.log.debug("Created directory:", fname)
   else
     local fd, err = uv.fs_open(fname, "w", tonumber("644", 8))
-    if not fd then
-      M.log.error("Failed to create file for `create()`:", err)
-      return false
+    assert(fd ~= nil, ("Failed to create file: %s"):format(tostring(err)))
+
+    if opts.overwrite then
+      assert(uv.fs_write(fd, ""), ("Unable to overwrite `%s`"):format(fname))
     end
+
     M.log.debug("Created file:", fname)
-    uv.fs_close(fd)
+    assert(uv.fs_close(fd), ("Unable to close file descriptor for `%s`"):format(fname))
   end
 
   M.did_create({ fname = fname })
   return (
     pcall(function()
-      if not is_dir then
+      if not opts.dir then
         vim.cmd.edit({ args = { vim.fn.fnameescape(fname) } })
       end
     end)
@@ -349,33 +376,33 @@ end
 
 ---Sourced from `Crysthamus/nvim-file-operations`:
 ---https://github.com/Crysthamus/nvim-file-operations/blob/main/lua/nvim-file-operations.lua
+---
 ---@param fname string
 ---@return boolean success
 function M.delete(fname)
-  Util.validate({ fname = { fname, { "string" } } })
+  M.util.validate({ fname = { fname, { "string" } } })
   if fname == "" then
-    M.log.error("Target file name for `delete()` is empty")
+    M.log.notify_error("Target file name for `delete()` is empty")
     return false
   end
 
-  fname = Util.strip_slash(fname)
+  fname = M.util.strip_slash(fname)
   local stat = uv.fs_stat(fname)
   if not stat then
-    M.log.error("Target file name for `delete()` does not exist")
+    M.log.notify_error("Target file name for `delete()` does not exist")
     return false
   end
 
   M.will_delete({ fname = fname })
 
-  local rm_ok, rm_err = (stat.type == "directory" and uv.fs_rmdir or uv.fs_unlink)(fname)
-  if not rm_ok then
-    M.log.error("Failed to delete file for `delete()`:", rm_err)
-    return false
-  end
+  assert(
+    (stat.type == "directory" and uv.fs_rmdir or uv.fs_unlink)(fname),
+    ("Unable to delete target file/directory: `%s`"):format(fname)
+  )
 
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
     if not delete_buf(bufnr, fname) then
-      M.log.warn("Unable to delete buffer ID", bufnr)
+      M.log.notify_warn("Unable to delete buffer ID", bufnr)
     end
   end
 
@@ -388,29 +415,30 @@ end
 ---@overload fun(new_name: string): success: boolean
 ---@overload fun(new_name: string, old_name: string): success: boolean
 function M.rename(new_name, old_name)
-  Util.validate({
+  M.util.validate({
     new_name = { new_name, { "string" } },
     old_name = { old_name, { "string", "nil" }, true },
   })
   old_name = old_name or vim.api.nvim_buf_get_name(vim.api.nvim_get_current_buf())
 
   if vim.list_contains({ new_name, old_name }, "") then
-    M.log.error("Either `new_name` or `old_name` for `rename()` are empty")
+    M.log.notify_error("Either `new_name` or `old_name` for `rename()` are empty")
     return false
   end
-  old_name, new_name = Util.strip_slash(old_name), Util.strip_slash(new_name)
+
+  old_name, new_name = M.util.strip_slash(old_name), M.util.strip_slash(new_name)
 
   M.will_rename({ new_name = new_name, old_name = old_name })
 
-  local dir = Util.strip_slash(new_name, ":h")
+  local dir = M.util.strip_slash(new_name, ":h")
   if vim.fn.isdirectory(dir) ~= 1 and not mkdir(dir) then
-    M.log.error("Unable to create parent directory for target", dir)
+    M.log.notify_error("Unable to create parent directory for target", dir)
     return false
   end
 
   local rename_ok, rename_err = uv.fs_rename(old_name, new_name)
   if not rename_ok then
-    M.log.error("Failed to rename for `rename()`:", rename_err)
+    M.log.notify_error("Failed to rename target file:", rename_err)
     return false
   end
 

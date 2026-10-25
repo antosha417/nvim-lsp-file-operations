@@ -1,11 +1,11 @@
----@alias LspFileOps.Log.LogLevels "debug"|"info"|"error"|"warn"
+---@alias LFO.Log.LogLevels "debug"|"info"|"error"|"warn"
 
 local MAX_SIZE = 1048576 -- 1MiB
 local OUTPUT = vim.fs.joinpath(vim.fn.stdpath("cache"), "lsp-file-operations.log")
 local uv = vim.uv or vim.loop
 local Util = require("lsp-file-operations.util")
 
----@enum LspFileOps.LogLevelEnum
+---@enum LFO.LogLevelEnum
 local levels = {
   debug = vim.log.levels.DEBUG,
   error = vim.log.levels.ERROR,
@@ -57,16 +57,16 @@ local function write_output(msg)
   end
 end
 
----@class LspFileOps.Log
----@field level LspFileOps.Log.LogLevels
+---@class LFO.Log
+---@field level LFO.Log.LogLevels
 local M = {}
 
 M.level = "error"
 
----@param level LspFileOps.Log.LogLevels
+---@param level LFO.Log.LogLevels
 ---@param notify boolean
 ---@return fun(...: any) cb
----@overload fun(level: LspFileOps.Log.LogLevels): cb: fun(...: any)
+---@overload fun(level: LFO.Log.LogLevels): cb: fun(...: any)
 local function gen_log_func(level, notify)
   Util.validate({
     level = { level, { "string" } },

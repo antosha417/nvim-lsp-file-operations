@@ -14,7 +14,7 @@ local function get(t, k, fallback)
   end, true)
 end
 
-local default_config = { ---@type LspFileOpsConfig
+local default_config = { ---@type LFOConfig
   auto_save = false,
   debug = false,
   operations = {
@@ -28,7 +28,7 @@ local default_config = { ---@type LspFileOpsConfig
   timeout_ms = 10000,
 }
 
-local config = nil ---@type LspFileOpsConfig|nil|?
+local config = nil ---@type LFOConfig|nil|?
 
 ---Safely writes a specific buffer to disk if it has unsaved mutations
 ---
@@ -86,7 +86,7 @@ local function extract_uris(workspace_edit)
 end
 
 ---Helper function to subscribe events to a given module callback
----@param op_events LspFileOpsEvents the table that maps modules to event strings
+---@param op_events LFOEvents the table that maps modules to event strings
 ---@param subscribe fun(module: string, event: string) the function for how to subscribe a module to an event
 local function setup_events(op_events, subscribe)
   Util.validate({
@@ -98,7 +98,7 @@ local function setup_events(op_events, subscribe)
     return
   end
 
-  local modules = { ---@type table<LspFileOpsConfig.Operations, string>
+  local modules = { ---@type table<LFOConfig.Operations, string>
     didCreateFiles = "did_create",
     didDeleteFiles = "did_delete",
     didRenameFiles = "did_rename",
@@ -107,7 +107,7 @@ local function setup_events(op_events, subscribe)
     willRenameFiles = "will_rename",
   }
   for operation, enabled in pairs(config.operations) do
-    ---@cast operation LspFileOps.Operations
+    ---@cast operation LFO.Operations
     ---@cast enabled boolean
     if enabled and modules[operation] and op_events[operation] then
       vim.tbl_map(function(event) ---@param event string
@@ -118,14 +118,14 @@ local function setup_events(op_events, subscribe)
   end
 end
 
----@class LspFileOps.Config
----@field get fun(): config: LspFileOpsConfig
----@field get_defaults fun(): default_config: LspFileOpsConfig
----@field set fun(cfg?: LspFileOpsConfig)
+---@class LFO.Config
+---@field get fun(): config: LFOConfig
+---@field get_defaults fun(): default_config: LFOConfig
+---@field set (fun())|(fun(cfg: LFOConfig))
 local M = {}
 
 setmetatable(M, {
-  __index = function(self, k) ---@param self LspFileOps.Config
+  __index = function(self, k) ---@param self LFO.Config
     local raw = Util.get(self, k)
     if raw ~= nil then
       return raw
@@ -157,7 +157,8 @@ setmetatable(M, {
   end,
 })
 
----@param opts? LspFileOpsConfig
+---@param opts LFOConfig
+---@overload fun()
 function M.setup(opts)
   Util.validate({ opts = { opts, { "table", "nil" }, true } })
   opts = opts or {}
