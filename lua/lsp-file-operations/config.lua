@@ -1,7 +1,6 @@
 ---@module "lsp-file-operations._meta"
 
 local Util = require("lsp-file-operations.util")
-local Log = require("lsp-file-operations.log")
 
 ---@generic T: table, F
 ---@param t T
@@ -38,6 +37,7 @@ local config = nil ---@type LFOConfig|nil|?
 local save_buffers = vim.schedule_wrap(function(uris) ---@param uris string[]
   Util.validate({ uris = { uris, { "table" } } })
 
+  local Log = require("lsp-file-operations.log")
   for _, uri in ipairs(uris) do
     local bufnr = vim.uri_to_bufnr(uri)
     if
@@ -151,7 +151,7 @@ setmetatable(M, {
     if k == "set" then
       return get(self, k, function(cfg)
         config = cfg
-        Log.debug("Config modified to", config)
+        require("lsp-file-operations.log").debug("Config modified to", config)
       end)
     end
   end,
@@ -178,10 +178,11 @@ function M.setup(opts)
     end
   end
 
+  local Log = require("lsp-file-operations.log")
   Log.setup()
 
   if config.debug then
-    Log.level = "debug"
+    Log.set_level("debug")
   end
 
   local group = vim.api.nvim_create_augroup("LSPFileOps.Integrations", { clear = true })

@@ -26,50 +26,52 @@ local function write_output(msg)
 
   local fd ---@type integer|nil|?
   if not stat then
-    fd = assert(
-      uv.fs_open(OUTPUT, "w", Util.fmode("644")),
-      ("Unable to open file to create: %s"):format(OUTPUT)
-    )
-    assert(uv.fs_close(fd), ("Unable to close file descriptor for %s"):format(OUTPUT))
+    fd = assert(uv.fs_open(OUTPUT, "w", Util.fmode("644")), "Unable to open file to create logfile")
+    assert(uv.fs_close(fd), "Unable to close file descriptor for logfile")
   end
 
   fd = assert(
     uv.fs_open(OUTPUT, "r", Util.fmode("644")),
-    ("Unable to open file to read its contents: %s"):format(OUTPUT)
+    "Unable to open logfile file to read its contents"
   )
   stat = uv.fs_stat(OUTPUT)
   local data = nil ---@type string|nil|?
   if stat then
-    data = uv.fs_read(fd, stat.size)
+    data = assert(uv.fs_read(fd, stat.size), "Unable to read data from logfile")
   end
-  assert(uv.fs_close(fd), ("Unable to close file descriptor for %s"):format(OUTPUT))
+  assert(uv.fs_close(fd), "Unable to close file descriptor for logfile")
 
   if data then
-    fd = assert(
-      uv.fs_open(OUTPUT, "w", Util.fmode("664")),
-      ("Unable to open file to write: %s"):format(OUTPUT)
-    )
+    fd = assert(uv.fs_open(OUTPUT, "w", Util.fmode("664")), "Unable to open logfile for writing")
     assert(
       uv.fs_write(fd, ("%s%s%s"):format(data, data ~= "" and "\n" or "", msg)),
-      ("Unable to write contents to %s"):format(OUTPUT)
+      "Unable to write data to logfile"
     )
-    assert(uv.fs_close(fd), ("Unable to close file descriptor for %s"):format(OUTPUT))
+    assert(uv.fs_close(fd), "Unable to close file descriptor for logfile")
   end
 end
+
+local level = "error" ---@type LFO.Log.LogLevels
 
 ---@class LFO.Log
 ---@field level LFO.Log.LogLevels
 local M = {}
 
-M.level = "error"
+---@param lvl LFO.Log.LogLevels
+function M.set_level(lvl)
+  Util.validate({ lvl = { lvl, { "string" } } })
 
----@param level LFO.Log.LogLevels
+  assert(vim.list_contains({ "debug", "error", "info", "warn" }, lvl), "Level is not valid")
+  level = lvl
+end
+
+---@param lvl LFO.Log.LogLevels
 ---@param notify boolean
 ---@return fun(...: any) cb
----@overload fun(level: LFO.Log.LogLevels): cb: fun(...: any)
-local function gen_log_func(level, notify)
+---@overload fun(lvl: LFO.Log.LogLevels): cb: fun(...: any)
+local function gen_log_func(lvl, notify)
   Util.validate({
-    level = { level, { "string" } },
+    lvl = { lvl, { "string" } },
     notify = { notify, { "boolean", "nil" }, true },
   })
   if notify == nil then
@@ -86,7 +88,7 @@ local function gen_log_func(level, notify)
           or (
             type(arg) == "string" and arg
             or (
-              vim.list_contains({ "number", "boolean" }, type(arg)) and tostring(arg)
+              (type(arg) == "boolean" or type(arg) == "number") and tostring(arg)
               or vim.inspect(arg, { newline = " ", indent = "" })
             )
           )
@@ -100,7 +102,7 @@ local function gen_log_func(level, notify)
     vim.schedule(function() -- HACK: Use `vim.schedule()` to avoid mangling the output of tests
       local date = os.date("*t") --[[@as osdate]]
       local txt = ("[nvim-lsp-file-operations] [%s %d-%d-%d %02d:%02d:%02d]: %s"):format(
-        level:upper(),
+        lvl:upper(),
         date.year,
         date.month,
         date.day,
@@ -112,8 +114,8 @@ local function gen_log_func(level, notify)
 
       write_output(txt)
 
-      if levels[M.level] <= levels[level] or notify then
-        vim.notify(txt, levels[level])
+      if levels[level] <= levels[lvl] or notify then
+        vim.notify(txt, levels[lvl])
       end
     end)
   end
@@ -135,13 +137,11 @@ function M.setup()
 
   timer = assert(uv.new_timer(), "Unable to create new timer")
   timer:start(30000, 30000, function()
-    local stat = uv.fs_stat(OUTPUT)
-    if stat and stat.size > MAX_SIZE then
-      local fd = uv.fs_open(OUTPUT, "w", Util.fmode("644"))
-      if fd then
-        assert(uv.fs_ftruncate(fd, 0), ("Log file could not be truncated: %s"):format(OUTPUT))
-        assert(uv.fs_close(fd), ("Unable to close file descriptor for %s"):format(OUTPUT))
-      end
+    local stat = assert(uv.fs_stat(OUTPUT), "Unable to retrieve stats from logfile")
+    if stat.size > MAX_SIZE then
+      local fd = assert(uv.fs_open(OUTPUT, "w", Util.fmode("644")), "Unable to open logfile")
+      assert(uv.fs_ftruncate(fd, 0), "Logfile could not be truncated")
+      assert(uv.fs_close(fd), "Unable to close file descriptor for logfile")
     end
   end)
 
