@@ -137,8 +137,8 @@ function M.setup()
 
   timer = assert(uv.new_timer(), "Unable to create new timer")
   timer:start(30000, 30000, function()
-    local stat = assert(uv.fs_stat(OUTPUT), "Unable to retrieve stats from logfile")
-    if stat.size > MAX_SIZE then
+    local stat = uv.fs_stat(OUTPUT)
+    if stat and stat.type == "file" and stat.size > MAX_SIZE then -- NOTE: Logfile is only created on first write
       local fd = assert(uv.fs_open(OUTPUT, "w", Util.fmode("644")), "Unable to open logfile")
       assert(uv.fs_ftruncate(fd, 0), "Logfile could not be truncated")
       assert(uv.fs_close(fd), "Unable to close file descriptor for logfile")
