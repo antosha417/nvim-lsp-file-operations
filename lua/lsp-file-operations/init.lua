@@ -295,7 +295,7 @@ local function mkdir(path)
   M.util.validate({ path = { path, { "string" } } })
 
   local result ---@type boolean
-  if vim.fn.has("nvim-0.13") == 1 then
+  if M.util.vim_has("nvim-0.13") then
     M.log.debug("Neovim version >=v0.13.0, using `vim.fs.mkdir()`")
     result = (pcall(vim.fs.mkdir, path, { parents = true }))
   else
