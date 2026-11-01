@@ -27,17 +27,26 @@ local function completor(_, line)
   return items
 end
 
+---@param subcommand string
+---@param msg string
+local function command_error(subcommand, msg)
+  LFO.util.validate({
+    subcommand = { subcommand, { "string" } },
+    msg = { msg, { "string" } },
+  })
+
+  LFO.log.notify_error(("`:LFO %s` %s"):format(subcommand, msg))
+end
+
 vim.api.nvim_create_user_command("LFO", function(ctx)
   if not vim.list_contains({ "create", "delete", "rename" }, ctx.fargs[1]) then
     LFO.log.notify_error(("Unknown argument for `:LFO` - `%s`"):format(ctx.fargs[1]))
   elseif vim.list_contains({ "create", "delete" }, ctx.fargs[1]) and #ctx.fargs < 2 then
-    LFO.log.notify_error(("`:LFO %s` requires one argument"):format(ctx.fargs[1]))
+    command_error(ctx.fargs[1], "requires one argument")
   elseif vim.list_contains({ "create", "delete" }, ctx.fargs[1]) and #ctx.fargs > 2 then
-    LFO.log.notify_error(("`:LFO %s` only accepts one argument"):format(ctx.fargs[1]))
+    command_error(ctx.fargs[1], "only accepts one argument")
   elseif ctx.fargs[1] == "rename" and #ctx.fargs < 2 or #ctx.fargs > 3 then
-    LFO.log.notify_error(
-      ("`:LFO %s` only accepts either one or two arguments"):format(ctx.fargs[1])
-    )
+    command_error(ctx.fargs[1], "only accepts either one or two arguments")
   elseif vim.list_contains({ "create", "delete" }, ctx.fargs[1]) and #ctx.fargs == 2 then
     (ctx.fargs[1] == "create" and LFO.create or LFO.delete)(ctx.fargs[2])
   elseif ctx.fargs[1] == "rename" and #ctx.fargs <= 3 then

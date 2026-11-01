@@ -99,6 +99,7 @@ local function gen_log_func(lvl, notify)
       return
     end
 
+    msg = Util.lstrip(" ", msg)
     vim.schedule(function() -- HACK: Use `vim.schedule()` to avoid mangling the output of tests
       local date = os.date("*t") --[[@as osdate]]
       local txt = notify and ("[nvim-lsp-file-operations]: %s"):format(msg)
