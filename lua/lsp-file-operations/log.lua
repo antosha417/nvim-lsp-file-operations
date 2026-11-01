@@ -101,16 +101,17 @@ local function gen_log_func(lvl, notify)
 
     vim.schedule(function() -- HACK: Use `vim.schedule()` to avoid mangling the output of tests
       local date = os.date("*t") --[[@as osdate]]
-      local txt = ("[nvim-lsp-file-operations] [%s %d-%d-%d %02d:%02d:%02d]: %s"):format(
-        lvl:upper(),
-        date.year,
-        date.month,
-        date.day,
-        date.hour,
-        date.min,
-        date.sec,
-        msg
-      )
+      local txt = notify and ("[nvim-lsp-file-operations]: %s"):format(msg)
+        or ("[nvim-lsp-file-operations] [%s %d-%d-%d %02d:%02d:%02d]: %s"):format(
+          lvl:upper(),
+          date.year,
+          date.month,
+          date.day,
+          date.hour,
+          date.min,
+          date.sec,
+          msg
+        )
 
       write_output(txt)
 
