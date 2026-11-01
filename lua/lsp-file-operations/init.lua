@@ -2,6 +2,9 @@
 
 local uv = vim.uv or vim.loop
 
+---@diagnostic disable-next-line:deprecated
+local uri_from_fname = (vim.uri and vim.uri.from_fname) and vim.uri.from_fname or vim.uri_from_fname
+
 ---@generic T: table, F
 ---@param t T
 ---@param k any
@@ -60,7 +63,7 @@ local function gen_callback(method)
             { "server_capabilities", "workspace", "fileOperations", method }
           )
           if cap and Util.matches_filters(cap.filters or {}, data.fname) then
-            local params = { files = { { uri = vim.uri_from_fname(data.fname) } } }
+            local params = { files = { { uri = uri_from_fname(data.fname) } } }
             Util.client_notify(client, mtd, params)
             M.log.debug(("Sending %s notification"):format(mtd), params)
           end
@@ -84,7 +87,7 @@ local function gen_callback(method)
           )
           if cap and Util.matches_filters(cap.filters or {}, old) then
             local params = {
-              files = { { newUri = vim.uri_from_fname(new), oldUri = vim.uri_from_fname(old) } },
+              files = { { newUri = uri_from_fname(new), oldUri = uri_from_fname(old) } },
             }
             Util.client_notify(client, mtd, params)
             M.log.debug(("Sending %s notification"):format(mtd), params)

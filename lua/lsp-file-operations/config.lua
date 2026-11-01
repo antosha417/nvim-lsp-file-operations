@@ -39,7 +39,8 @@ local save_buffers = vim.schedule_wrap(function(uris) ---@param uris string[]
 
   local Log = require("lsp-file-operations.log")
   for _, uri in ipairs(uris) do
-    local bufnr = vim.uri_to_bufnr(uri)
+    ---@diagnostic disable-next-line:deprecated
+    local bufnr = ((vim.uri and vim.uri.to_buf) and vim.uri.to_buf or vim.uri_to_bufnr)(uri)
     if
       vim.api.nvim_buf_is_valid(bufnr)
       and vim.api.nvim_buf_is_loaded(bufnr)

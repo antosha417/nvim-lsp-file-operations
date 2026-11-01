@@ -1,6 +1,9 @@
 local stub = require("luassert.stub")
 local assert = require("luassert")
 
+---@diagnostic disable-next-line:deprecated
+local uri_from_fname = (vim.uri and vim.uri.from_fname) and vim.uri.from_fname or vim.uri_from_fname
+
 ---@class LFO.Spec.ClientNotifyCall
 ---@field method vim.lsp.protocol.Method.ClientToServer.Request
 ---@field params? table
@@ -108,7 +111,7 @@ describe("did-* operations", function()
         assert.are.equal(1, #client.notify_calls)
         assert.are.equal(case.method, client.notify_calls[1].method)
         assert.are.same(
-          { files = { { uri = vim.uri_from_fname(fname) } } },
+          { files = { { uri = uri_from_fname(fname) } } },
           client.notify_calls[1].params
         )
       end)
@@ -143,7 +146,7 @@ describe("did-* operations", function()
       assert.are.equal(1, #client.notify_calls)
       assert.are.equal("workspace/didRenameFiles", client.notify_calls[1].method)
       assert.are.same({
-        files = { { oldUri = vim.uri_from_fname(fname), newUri = vim.uri_from_fname(new_name) } },
+        files = { { oldUri = uri_from_fname(fname), newUri = uri_from_fname(new_name) } },
       }, client.notify_calls[1].params)
     end)
 
@@ -187,7 +190,7 @@ describe("will-* operations", function()
         assert.are.equal(1, #client.request_calls)
         assert.are.equal(case.method, client.request_calls[1].method)
         assert.are.same(
-          { files = { { uri = vim.uri_from_fname(fname) } } },
+          { files = { { uri = uri_from_fname(fname) } } },
           client.request_calls[1].params
         )
         assert.stub(apply).was.called_with(edit, "utf-16")
@@ -227,9 +230,10 @@ describe("will-* operations", function()
       run_with_clients("will-rename", { client }, { old_name = fname, new_name = new_name })
       assert.are.equal(1, #client.request_calls)
       assert.are.equal("workspace/willRenameFiles", client.request_calls[1].method)
-      assert.are.same({
-        files = { { oldUri = vim.uri_from_fname(fname), newUri = vim.uri_from_fname(new_name) } },
-      }, client.request_calls[1].params)
+      assert.are.same(
+        { files = { { oldUri = uri_from_fname(fname), newUri = uri_from_fname(new_name) } } },
+        client.request_calls[1].params
+      )
       assert.stub(apply).was.called_with(edit, "utf-16")
       apply:revert()
     end)

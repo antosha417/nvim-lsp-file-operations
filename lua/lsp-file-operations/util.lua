@@ -1,5 +1,8 @@
 ---@module "lsp-file-operations._meta"
 
+---@diagnostic disable-next-line:deprecated
+local uri_from_fname = (vim.uri and vim.uri.from_fname) and vim.uri.from_fname or vim.uri_from_fname
+
 ---@class LFO.Util
 local M = {}
 
@@ -247,10 +250,9 @@ function M.get_workspace_edit(request, client, fname_or_old_name, new_name)
   local Log = require("lsp-file-operations.log")
   local params = {
     files = {
-      request == "willRenameFiles" and {
-        newUri = vim.uri_from_fname(new_name),
-        oldUri = vim.uri_from_fname(fname_or_old_name),
-      } or { uri = vim.uri_from_fname(fname_or_old_name) },
+      request == "willRenameFiles"
+          and { newUri = uri_from_fname(new_name), oldUri = uri_from_fname(fname_or_old_name) }
+        or { uri = uri_from_fname(fname_or_old_name) },
     },
   }
   local method = ("workspace/%s"):format(request)
