@@ -13,7 +13,7 @@ local function completor(_, line)
   if args[1]:sub(-1) == "!" then -- Don't trigger completions if user command is called with a "bang"
     items = {}
   elseif #args == 2 then -- Complete the second word
-    for _, item in ipairs({ "create", "delete", "rename" }) do
+    for _, item in ipairs({ "create", "delete", "rename", "log" }) do
       if vim.startswith(item, args[#args]) then
         table.insert(items, item)
       end
@@ -39,8 +39,10 @@ local function command_error(subcommand, msg)
 end
 
 vim.api.nvim_create_user_command("LFO", function(ctx)
-  if not vim.list_contains({ "create", "delete", "rename" }, ctx.fargs[1]) then
+  if not vim.list_contains({ "create", "delete", "rename", "log" }, ctx.fargs[1]) then
     LFO.log.notify_error(("Unknown argument for `:LFO` - `%s`"):format(ctx.fargs[1]))
+  elseif ctx.fargs[1] == "log" and #ctx.fargs > 1 then
+    command_error(ctx.fargs[1], "accepts no arguments")
   elseif vim.list_contains({ "create", "delete" }, ctx.fargs[1]) and #ctx.fargs < 2 then
     command_error(ctx.fargs[1], "requires one argument")
   elseif vim.list_contains({ "create", "delete" }, ctx.fargs[1]) and #ctx.fargs > 2 then
@@ -51,5 +53,7 @@ vim.api.nvim_create_user_command("LFO", function(ctx)
     (ctx.fargs[1] == "create" and LFO.create or LFO.delete)(ctx.fargs[2])
   elseif ctx.fargs[1] == "rename" and #ctx.fargs <= 3 then
     LFO.rename(ctx.fargs[#ctx.fargs == 3 and 3 or 2], #ctx.fargs == 3 and ctx.fargs[2] or nil)
+  elseif ctx.fargs[1] == "log" then
+    LFO.log.toggle()
   end
 end, { complete = completor, nargs = "+" })

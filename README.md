@@ -217,6 +217,7 @@ This plugin comes with the `:LFO` user command:
 :LFO delete <PATH/TO/FILE>                         " Delete a file in the current workspace
 :LFO rename <PATH/TO/NEW_FILE>                     " Rename the current buffer's file to the new path
 :LFO rename <PATH/TO/OLD_FILE> <PATH/TO/NEW_FILE>  " Rename an existing file path to a new path
+:LFO log                                           " Opens log file in a new tab
 ```
 
 ---
