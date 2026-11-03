@@ -49,45 +49,28 @@ local M = {}
 local function gen_callback(method)
   local Util = require("lsp-file-operations.util")
   local mtd = ("workspace/%sFiles"):format(method) --[[@as vim.lsp.protocol.Method]]
-  if vim.list_contains({ "didCreate", "didDelete" }, method) then
-    return function(data) ---@param data { fname: string }
+  if vim.list_contains({ "didCreate", "didDelete", "didRename" }, method) then
+    return function(data) ---@param data { fname: string }|{ new_name: string, old_name: string }
       Util.validate({
         data = { data, { "table" } },
-        ["data.fname"] = { data.fname, { "string" } },
+        ["data.fname"] = { data.fname, { "string", "nil" }, true },
+        ["data.new_name"] = { data.new_name, { "string", "nil" }, true },
+        ["data.old_name"] = { data.old_name, { "string", "nil" }, true },
       })
 
+      local new, old, fname = data.new_name, data.old_name, data.fname ---@type string|nil|?, string|nil|?, string|nil|?
       for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
           local cap = Util.get_nested_path(
             client,
             { "server_capabilities", "workspace", "fileOperations", method }
           )
-          if cap and Util.matches_filters(cap.filters or {}, data.fname) then
-            local params = { files = { { uri = uri_from_fname(data.fname) } } }
-            Util.client_notify(client, mtd, params)
-            M.log.debug(("Sending %s notification"):format(mtd), params)
-          end
-        end
-      end
-    end
-  elseif method == "didRename" then
-    return function(data) ---@param data { new_name: string, old_name: string }
-      Util.validate({
-        data = { data, { "table" } },
-        ["data.new_name"] = { data.new_name, { "string" } },
-        ["data.old_name"] = { data.old_name, { "string" } },
-      })
-
-      local old, new = data.old_name, data.new_name
-      for _, client in ipairs(Util.get_clients()) do
-        if client.initialized then
-          local cap = Util.get_nested_path(
-            client,
-            { "server_capabilities", "workspace", "fileOperations", method }
-          )
-          if cap and Util.matches_filters(cap.filters or {}, old) then
+          if cap and Util.matches_filters(cap.filters or {}, fname or old) then
             local params = {
-              files = { { newUri = uri_from_fname(new), oldUri = uri_from_fname(old) } },
+              files = {
+                fname and { uri = uri_from_fname(fname) }
+                  or { newUri = uri_from_fname(new), oldUri = uri_from_fname(old) },
+              },
             }
             Util.client_notify(client, mtd, params)
             M.log.debug(("Sending %s notification"):format(mtd), params)
@@ -95,45 +78,27 @@ local function gen_callback(method)
         end
       end
     end
-  elseif vim.list_contains({ "willCreate", "willDelete" }, method) then
-    return function(data) ---@param data { fname: string }
+  elseif vim.list_contains({ "willCreate", "willDelete", "willRename" }, method) then
+    return function(data) ---@param data { fname: string }|{ new_name: string, old_name: string }
       Util.validate({
         data = { data, { "table" } },
-        ["data.fname"] = { data.fname, { "string" } },
+        ["data.fname"] = { data.fname, { "string", "nil" }, true },
+        ["data.new_name"] = { data.new_name, { "string", "nil" }, true },
+        ["data.old_name"] = { data.old_name, { "string" }, true },
       })
 
+      local new, old, fname = data.new_name, data.old_name, data.fname ---@type string|nil|?, string|nil|?, string|nil|?
       for _, client in ipairs(Util.get_clients()) do
         if client.initialized then
           local cap = Util.get_nested_path(
             client,
             { "server_capabilities", "workspace", "fileOperations", method }
           )
-          if cap and Util.matches_filters(cap.filters or {}, data.fname) then
-            local edit = Util.get_workspace_edit(("%sFiles"):format(method), client, data.fname)
-            if edit then
-              Util.client_apply_workspace_edit(client, mtd, edit)
-            end
-          end
-        end
-      end
-    end
-  elseif method == "willRename" then
-    return function(data) ---@param data { new_name: string, old_name: string }
-      Util.validate({
-        data = { data, { "table" } },
-        ["data.new_name"] = { data.new_name, { "string" } },
-        ["data.old_name"] = { data.old_name, { "string" } },
-      })
+          if cap and Util.matches_filters(cap.filters or {}, fname or old) then
+            local args = { ("%sFiles"):format(method), client }
+            vim.list_extend(args, fname and { fname } or { old, new })
 
-      local old, new = data.old_name, data.new_name
-      for _, client in ipairs(Util.get_clients()) do
-        if client.initialized then
-          local cap = Util.get_nested_path(
-            client,
-            { "server_capabilities", "workspace", "fileOperations", method }
-          )
-          if cap and Util.matches_filters(cap.filters or {}, old) then
-            local edit = Util.get_workspace_edit("willRenameFiles", client, old, new)
+            local edit = Util.get_workspace_edit(unpack(args))
             if edit then
               Util.client_apply_workspace_edit(client, mtd, edit)
             end
@@ -297,10 +262,13 @@ local function mkdir(path)
   local result ---@type boolean
   if M.util.vim_has("nvim-0.13") then
     M.log.debug("Neovim version >=v0.13.0, using `vim.fs.mkdir()`")
-    result = (pcall(vim.fs.mkdir, path, { parents = true }))
+    result = pcall(vim.fs.mkdir, path, { parents = true })
   else
     M.log.debug("Neovim version <v0.13.0, using `vim.fn.mkdir()`")
-    result = vim.fn.mkdir(path, "p") == 1
+    result = assert(
+      vim.fn.mkdir(path, "p") == 1,
+      ("Unable to create directory and its parents: `%s`"):format(path)
+    )
   end
   return result
 end
