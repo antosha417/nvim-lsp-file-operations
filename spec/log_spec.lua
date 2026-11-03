@@ -4,7 +4,7 @@ local uv = vim.uv or vim.loop
 describe("Log.setup", function()
   local cache_dir ---@type string
   local logfile ---@type string
-  local tick ---@type fun()|nil
+  local tick ---@type function|nil|?
   local orig_stdpath = vim.fn.stdpath
   local orig_new_timer = uv.new_timer
 
@@ -18,7 +18,7 @@ describe("Log.setup", function()
     end
     uv.new_timer = function() ---@diagnostic disable-line:duplicate-set-field
       return {
-        start = function(_, _, _, cb)
+        start = function(_, _, _, cb) ---@param cb function
           tick = cb
         end,
         stop = function()
@@ -28,7 +28,7 @@ describe("Log.setup", function()
     end
 
     package.loaded["lsp-file-operations.log"] = nil
-    require("lsp-file-operations.log").setup()
+    require("lsp-file-operations.log").setup(logfile)
   end)
 
   after_each(function()
@@ -46,12 +46,14 @@ describe("Log.setup", function()
 
   it("keeps a logfile under the size limit", function()
     vim.fn.writefile({ "entry" }, logfile)
+    assert(tick)
     tick()
     assert.are.same({ "entry" }, vim.fn.readfile(logfile))
   end)
 
   it("truncates a logfile over the size limit", function()
     vim.fn.writefile({ ("x"):rep(1048577) }, logfile)
+    assert(tick)
     tick()
     assert.are.equal(0, vim.fn.getfsize(logfile))
   end)

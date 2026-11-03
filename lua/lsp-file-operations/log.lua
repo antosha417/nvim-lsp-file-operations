@@ -220,15 +220,21 @@ M.notify_info = gen_log_func("info", true)
 M.notify_warn = gen_log_func("warn", true)
 M.warn = gen_log_func("warn")
 
-function M.setup()
+---@param logfile string
+---@overload fun()
+function M.setup(logfile)
+  Util.validate({ logfile = { logfile, { "string", "nil" }, true } })
   if timer then
     return
   end
 
+  OUTPUT = logfile or OUTPUT
+
   timer = assert(uv.new_timer(), "Unable to create new timer")
   timer:start(30000, 30000, function()
     local stat = uv.fs_stat(OUTPUT)
-    if stat and stat.type == "file" and stat.size > MAX_SIZE then -- NOTE: Logfile is only created on first write
+    if stat and stat.size > MAX_SIZE then -- NOTE: Logfile is only created on first write
+      assert(stat.type == "file", "Log file is not a file")
       local fd = assert(uv.fs_open(OUTPUT, "w", Util.fmode("644")), "Unable to open log file")
       assert(uv.fs_ftruncate(fd, 0), "Logfile could not be truncated")
       assert(uv.fs_close(fd), "Unable to close file descriptor for log file")
