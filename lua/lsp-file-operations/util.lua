@@ -14,6 +14,13 @@ function M.is_windows()
   return M.vim_has("win32")
 end
 
+---@param mod string
+function M.mod_exists(mod)
+  M.validate({ mod = { mod, { "string" } } })
+
+  return (pcall(require, mod))
+end
+
 ---@param feature string
 ---@return boolean has
 function M.vim_has(feature)
@@ -343,9 +350,8 @@ function M.rstrip(char, str)
       end
       str = M.rstrip(c, str)
     end
-  else
-    str = (not vim.startswith(str:reverse(), char) or char:len() > str:len()) and str
-      or M.lstrip(char, str:reverse()):reverse()
+  elseif vim.startswith(str:reverse(), char) and char:len() <= str:len() then
+    str = M.lstrip(char, str:reverse()):reverse()
   end
   return str
 end
@@ -362,8 +368,13 @@ function M.strip_slash(path, mods)
   })
 
   local slash = M.is_windows() and "\\" or "/"
-  path = M.rstrip(slash, vim.fn.fnamemodify(path, ":p"))
-  return M.rstrip(slash, vim.fn.fnamemodify(path, (mods and mods ~= "") and mods or ":p"))
+  return M.rstrip(
+    slash,
+    vim.fn.fnamemodify(
+      M.rstrip(slash, vim.fn.fnamemodify(path, ":p")),
+      (mods and mods ~= "") and mods or ":p"
+    )
+  )
 end
 
 ---@generic T: table, V

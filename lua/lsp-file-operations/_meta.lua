@@ -1,5 +1,6 @@
 ---@meta
 
+---@alias LFO.Log.LogLevels "debug"|"info"|"error"|"warn"
 ---@alias LFO.Operations
 ---|'didCreateFiles'
 ---|'didDeleteFiles'
@@ -30,7 +31,8 @@
 ---@field operations? LFOConfig.Operations
 ---@field timeout_ms? integer
 
----Non-legacy validation spec (>=v0.11)
+---Non-legacy validation spec (`>=v0.11`).
+---
 ---@class LFO.ValidateSpec
 ---@field [1] any
 ---@field [2] vim.validate.Validator

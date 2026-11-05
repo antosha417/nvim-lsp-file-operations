@@ -33,8 +33,8 @@ end
 ---@field did_rename fun(data: { new_name: string, old_name: string })
 ---@field get_config fun(): config: LFOConfig
 ---@field log LFO.Log
----@field set_config (fun())|(fun(cfg: LFOConfig))
----@field setup (fun())|(fun(opts: LFOConfig))
+---@field set_config fun()|fun(cfg: LFOConfig)
+---@field setup fun()|fun(opts: LFOConfig)
 ---@field util LFO.Util
 ---@field willCreate fun(data: { fname: string })
 ---@field willDelete fun(data: { fname: string })
@@ -111,7 +111,8 @@ end
 
 setmetatable(M, {
   __index = function(self, k) ---@param self LFO
-    local raw = require("lsp-file-operations.util").get(self, k)
+    local Util = require("lsp-file-operations.util")
+    local raw = Util.get(self, k)
     if raw ~= nil then
       return raw
     end
@@ -121,73 +122,41 @@ setmetatable(M, {
     end
 
     ---@cast k string
-    local ok_mod, mod = pcall(require, "lsp-file-operations." .. k)
-    if ok_mod and mod then
-      return get(self, k, mod)
+    local value = nil
+    if Util.mod_exists("lsp-file-operations." .. k) then
+      value = get(self, k, require("lsp-file-operations." .. k))
+    elseif k == "get_config" then
+      value = get(self, k, self.config.get)
+    elseif k == "did_create" then
+      value = get(self, k, gen_callback("didCreate"))
+    elseif k == "did_delete" then
+      value = get(self, k, gen_callback("didDelete"))
+    elseif k == "did_rename" then
+      value = get(self, k, gen_callback("didRename"))
+    elseif vim.list_contains({ "didCreate", "did-create" }, k) then
+      value = get(self, k, self.did_create)
+    elseif vim.list_contains({ "didDelete", "did-delete" }, k) then
+      value = get(self, k, self.did_delete)
+    elseif vim.list_contains({ "didRename", "did-rename" }, k) then
+      value = get(self, k, self.did_rename)
+    elseif k == "set_config" then
+      value = get(self, k, self.config.set)
+    elseif k == "setup" then
+      value = get(self, k, self.config.setup)
+    elseif k == "will_create" then
+      value = get(self, k, gen_callback("willCreate"))
+    elseif k == "will_delete" then
+      value = get(self, k, gen_callback("willDelete"))
+    elseif k == "will_rename" then
+      value = get(self, k, gen_callback("willRename"))
+    elseif vim.list_contains({ "willCreate", "will-create" }, k) then
+      value = get(self, k, self.will_create)
+    elseif vim.list_contains({ "willDelete", "will-delete" }, k) then
+      value = get(self, k, self.will_delete)
+    elseif vim.list_contains({ "willRename", "will-rename" }, k) then
+      value = get(self, k, self.will_rename)
     end
-    if k == "get_config" then
-      return get(self, k, self.config.get)
-    end
-    if k == "did_create" then
-      return get(self, k, gen_callback("didCreate"))
-    end
-    if k == "did_delete" then
-      return get(self, k, gen_callback("didDelete"))
-    end
-    if k == "did_rename" then
-      return get(self, k, gen_callback("didRename"))
-    end
-    if k == "didCreate" then
-      return get(self, k, self.did_create)
-    end
-    if k == "didDelete" then
-      return get(self, k, self.did_delete)
-    end
-    if k == "didRename" then
-      return get(self, k, self.did_rename)
-    end
-    if k == "did-create" then
-      return get(self, k, self.did_create)
-    end
-    if k == "did-delete" then
-      return get(self, k, self.did_delete)
-    end
-    if k == "did-rename" then
-      return get(self, k, self.did_rename)
-    end
-    if k == "set_config" then
-      return get(self, k, self.config.set)
-    end
-    if k == "setup" then
-      return get(self, k, self.config.setup)
-    end
-    if k == "will_create" then
-      return get(self, k, gen_callback("willCreate"))
-    end
-    if k == "will_delete" then
-      return get(self, k, gen_callback("willDelete"))
-    end
-    if k == "will_rename" then
-      return get(self, k, gen_callback("willRename"))
-    end
-    if k == "willCreate" then
-      return get(self, k, self.will_create)
-    end
-    if k == "willDelete" then
-      return get(self, k, self.will_delete)
-    end
-    if k == "willRename" then
-      return get(self, k, self.will_rename)
-    end
-    if k == "will-create" then
-      return get(self, k, self.will_create)
-    end
-    if k == "will-delete" then
-      return get(self, k, self.will_delete)
-    end
-    if k == "will-rename" then
-      return get(self, k, self.will_rename)
-    end
+    return value
   end,
 })
 

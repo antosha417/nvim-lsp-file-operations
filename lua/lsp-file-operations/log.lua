@@ -1,9 +1,8 @@
----@alias LFO.Log.LogLevels "debug"|"info"|"error"|"warn"
+---@module "lsp-file-operations._meta"
 
 local MAX_SIZE = 1048576 -- 1MiB
 local OUTPUT = vim.fs.joinpath(vim.fn.stdpath("cache"), "lsp-file-operations", "log")
 local uv = vim.uv or vim.loop
-local Util = require("lsp-file-operations.util")
 
 ---@enum LFO.LogLevelEnum
 local levels = {
@@ -17,6 +16,7 @@ local timer = nil ---@type uv.uv_timer_t|nil|?
 
 ---@param msg string
 local function write_output(msg)
+  local Util = require("lsp-file-operations.util")
   Util.validate({ msg = { msg, { "string" } } })
 
   local stat = uv.fs_stat(OUTPUT)
@@ -36,8 +36,7 @@ local function write_output(msg)
       )
     end
 
-    fd =
-      assert(uv.fs_open(OUTPUT, "w", Util.fmode("644")), "Unable to open file to create log file")
+    fd = assert(uv.fs_open(OUTPUT, "w", Util.fmode("644")), "Unable to create log file")
     assert(uv.fs_close(fd), "Unable to close file descriptor for log file")
   end
 
@@ -68,13 +67,29 @@ local log_tab = nil ---@type { tab: integer, buf: integer }|nil|?
 ---@class LFO.Log
 local M = {}
 
+local function timer_cb()
+  local stat = uv.fs_stat(OUTPUT)
+  if stat and stat.size > MAX_SIZE then -- NOTE: Logfile is only created on first write
+    assert(stat.type == "file", "Log file is not a file")
+    local fd = assert(
+      uv.fs_open(OUTPUT, "w", require("lsp-file-operations.util").fmode("644")),
+      "Unable to open log file"
+    )
+    assert(uv.fs_ftruncate(fd, 0), "Logfile could not be cleared")
+    assert(uv.fs_close(fd), "Unable to close file descriptor for log file")
+  end
+end
+
 function M.open()
   if log_tab then
     return
   end
 
   local stat = assert(uv.fs_stat(OUTPUT), "Unable to find log file")
-  local fd = assert(uv.fs_open(OUTPUT, "r", Util.fmode("644")), "Unable to open log file")
+  local fd = assert(
+    uv.fs_open(OUTPUT, "r", require("lsp-file-operations.util").fmode("644")),
+    "Unable to open log file"
+  )
   local data = assert(uv.fs_read(fd, stat.size), "Unable to read contents from log file")
   assert(uv.fs_close(fd), "Unable to close file descriptor for log file")
 
@@ -135,7 +150,7 @@ end
 
 ---@param lvl LFO.Log.LogLevels|1|2|3|4
 function M.set_level(lvl)
-  Util.validate({ lvl = { lvl, { "string", "number" } } })
+  require("lsp-file-operations.util").validate({ lvl = { lvl, { "string", "number" } } })
 
   assert(
     vim.list_contains({ "debug", "error", "info", "warn", 1, 2, 3, 4 }, lvl),
@@ -158,6 +173,7 @@ end
 ---@return fun(...: any) cb
 ---@overload fun(lvl: LFO.Log.LogLevels): cb: fun(...: any)
 local function gen_log_func(lvl, notify)
+  local Util = require("lsp-file-operations.util")
   Util.validate({
     lvl = { lvl, { "string" } },
     notify = { notify, { "boolean", "nil" }, true },
@@ -223,36 +239,27 @@ M.warn = gen_log_func("warn")
 ---@param logfile string
 ---@overload fun()
 function M.setup(logfile)
-  Util.validate({ logfile = { logfile, { "string", "nil" }, true } })
-  if timer then
-    return
+  require("lsp-file-operations.util").validate({ logfile = { logfile, { "string", "nil" }, true } })
+
+  if not timer then
+    OUTPUT = (logfile and logfile ~= "") and logfile or OUTPUT
+
+    timer = assert(uv.new_timer(), "Unable to create new timer")
+    assert(timer:start(30000, 30000, timer_cb), "Unable to start timer")
+
+    vim.api.nvim_create_autocmd("VimLeavePre", {
+      group = vim.api.nvim_create_augroup("LFOTimer", { clear = true }),
+      once = true,
+      callback = function()
+        if timer then
+          assert(timer:stop(), "Unable to stop log timer")
+          timer = nil
+        end
+      end,
+    })
+
+    vim.g.lfo_log_setup = 1
   end
-
-  OUTPUT = logfile or OUTPUT
-
-  timer = assert(uv.new_timer(), "Unable to create new timer")
-  timer:start(30000, 30000, function()
-    local stat = uv.fs_stat(OUTPUT)
-    if stat and stat.size > MAX_SIZE then -- NOTE: Logfile is only created on first write
-      assert(stat.type == "file", "Log file is not a file")
-      local fd = assert(uv.fs_open(OUTPUT, "w", Util.fmode("644")), "Unable to open log file")
-      assert(uv.fs_ftruncate(fd, 0), "Logfile could not be truncated")
-      assert(uv.fs_close(fd), "Unable to close file descriptor for log file")
-    end
-  end)
-
-  vim.api.nvim_create_autocmd("VimLeavePre", {
-    group = vim.api.nvim_create_augroup("LFOTimer", { clear = true }),
-    once = true,
-    callback = function()
-      if timer then
-        assert(timer:stop(), "Unable to stop log timer")
-        timer = nil
-      end
-    end,
-  })
-
-  vim.g.lfo_log_setup = 1
 end
 
 return M

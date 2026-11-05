@@ -216,9 +216,9 @@ function M.setup(opts)
       group = group,
       pattern = "neo-tree",
       callback = function()
-        local neo_tree_events = require("neo-tree.events")
         Log.debug("Setting up neo-tree integration")
 
+        local neo_tree_events = require("neo-tree.events")
         setup_events({
           didCreateFiles = { neo_tree_events.FILE_ADDED },
           didDeleteFiles = { neo_tree_events.FILE_DELETED },
@@ -281,19 +281,9 @@ function M.setup(opts)
 
   if config.auto_save then
     local cb = vim.lsp.util.apply_workspace_edit
-
-    --- Applies a `WorkspaceEdit`.
-    ---
-    ---@param workspace_edit lsp.WorkspaceEdit
-    ---@param position_encoding 'utf-8'|'utf-16'|'utf-32' (required)
-    ---@see https://microsoft.github.io/language-server-protocol/specifications/specification-current/#workspace_applyEdit
-    ---@diagnostic disable-next-line:duplicate-set-field
-    vim.lsp.util.apply_workspace_edit = function(workspace_edit, position_encoding)
-      if pcall(cb, workspace_edit, position_encoding) then
-        save_buffers(extract_uris(workspace_edit))
-      else
-        Log.error("Failed to apply workspace edit!")
-      end
+    vim.lsp.util.apply_workspace_edit = function(workspace_edit, position_encoding) ---@diagnostic disable-line:duplicate-set-field
+      assert(pcall(cb, workspace_edit, position_encoding), "Failed to apply workspace edit")
+      save_buffers(extract_uris(workspace_edit))
     end
   end
 end
