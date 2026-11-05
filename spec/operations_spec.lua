@@ -108,31 +108,33 @@ describe("did-* operations", function()
       it("notifies clients that support the capability", function()
         local client = make_client(case.cap)
         run_with_clients(module, { client }, { fname = fname })
-        assert.are.equal(1, #client.notify_calls)
-        assert.are.equal(case.method, client.notify_calls[1].method)
-        assert.are.same(
-          { files = { { uri = uri_from_fname(fname) } } },
-          client.notify_calls[1].params
+        assert(1 == #client.notify_calls)
+        assert(case.method == client.notify_calls[1].method)
+        assert(
+          vim.deep_equal(
+            { files = { { uri = uri_from_fname(fname) } } },
+            client.notify_calls[1].params
+          )
         )
       end)
 
       it("does not notify clients lacking the capability", function()
         local client = make_client()
         run_with_clients(module, { client }, { fname = fname })
-        assert.are.equal(0, #client.notify_calls)
+        assert(0 == #client.notify_calls)
       end)
 
       it("does not notify when the file does not match the filters", function()
         local client = make_client(case.cap, { { pattern = { glob = "**/*.py" } } })
         run_with_clients(module, { client }, { fname = fname })
-        assert.are.equal(0, #client.notify_calls)
+        assert(0 == #client.notify_calls)
       end)
 
       it("skips uninitialized clients", function()
         local client = make_client(case.cap)
         client.initialized = nil
         run_with_clients(module, { client }, { fname = fname })
-        assert.are.equal(0, #client.notify_calls)
+        assert(0 == #client.notify_calls)
       end)
     end)
   end
@@ -143,23 +145,26 @@ describe("did-* operations", function()
     it("sends oldUri and newUri", function()
       local client = make_client("didRename")
       run_with_clients("did-rename", { client }, { old_name = fname, new_name = new_name })
-      assert.are.equal(1, #client.notify_calls)
-      assert.are.equal("workspace/didRenameFiles", client.notify_calls[1].method)
-      assert.are.same({
-        files = { { oldUri = uri_from_fname(fname), newUri = uri_from_fname(new_name) } },
-      }, client.notify_calls[1].params)
+      assert(1 == #client.notify_calls)
+      assert("workspace/didRenameFiles" == client.notify_calls[1].method)
+      assert(
+        vim.deep_equal(
+          { files = { { oldUri = uri_from_fname(fname), newUri = uri_from_fname(new_name) } } },
+          client.notify_calls[1].params
+        )
+      )
     end)
 
     it("does not notify clients lacking the capability", function()
       local client = make_client()
       run_with_clients("did-rename", { client }, { old_name = fname, new_name = new_name })
-      assert.are.equal(0, #client.notify_calls)
+      assert(0 == #client.notify_calls)
     end)
 
     it("matches filters against the old name", function()
       local client = make_client("didRename", { { pattern = { glob = "**/*.py" } } })
       run_with_clients("did-rename", { client }, { old_name = fname, new_name = new_name })
-      assert.are.equal(0, #client.notify_calls)
+      assert(0 == #client.notify_calls)
     end)
   end)
 end)
@@ -187,11 +192,13 @@ describe("will-* operations", function()
         local client = make_client(case.cap, nil, { result = edit })
         local apply = stub(vim.lsp.util, "apply_workspace_edit")
         run_with_clients(module, { client }, { fname = fname })
-        assert.are.equal(1, #client.request_calls)
-        assert.are.equal(case.method, client.request_calls[1].method)
-        assert.are.same(
-          { files = { { uri = uri_from_fname(fname) } } },
-          client.request_calls[1].params
+        assert(1 == #client.request_calls)
+        assert(case.method == client.request_calls[1].method)
+        assert(
+          vim.deep_equal(
+            { files = { { uri = uri_from_fname(fname) } } },
+            client.request_calls[1].params
+          )
         )
         assert.stub(apply).was.called_with(edit, "utf-16")
         apply:revert()
@@ -200,7 +207,7 @@ describe("will-* operations", function()
       it("do not request from clients lacking the capability", function()
         local client = make_client(nil, nil, { result = edit })
         run_with_clients(module, { client }, { fname = fname })
-        assert.are.equal(0, #client.request_calls)
+        assert(0 == #client.request_calls)
       end)
 
       it("do not apply an edit when the request errors", function()
@@ -228,11 +235,13 @@ describe("will-* operations", function()
       local client = make_client("willRename", nil, { result = edit })
       local apply = stub(vim.lsp.util, "apply_workspace_edit")
       run_with_clients("will-rename", { client }, { old_name = fname, new_name = new_name })
-      assert.are.equal(1, #client.request_calls)
-      assert.are.equal("workspace/willRenameFiles", client.request_calls[1].method)
-      assert.are.same(
-        { files = { { oldUri = uri_from_fname(fname), newUri = uri_from_fname(new_name) } } },
-        client.request_calls[1].params
+      assert(1 == #client.request_calls)
+      assert("workspace/willRenameFiles" == client.request_calls[1].method)
+      assert(
+        vim.deep_equal(
+          { files = { { oldUri = uri_from_fname(fname), newUri = uri_from_fname(new_name) } } },
+          client.request_calls[1].params
+        )
       )
       assert.stub(apply).was.called_with(edit, "utf-16")
       apply:revert()

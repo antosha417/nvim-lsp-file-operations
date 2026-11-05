@@ -22,7 +22,7 @@ describe("lsp-file-operations", function()
 
     it("enables all six file operations by default (before setup)", function()
       lfo.set_config()
-      assert.are.same({
+      assert(vim.deep_equal({
         workspace = {
           fileOperations = {
             didCreate = true,
@@ -33,7 +33,7 @@ describe("lsp-file-operations", function()
             willRename = true,
           },
         },
-      }, lfo.default_capabilities())
+      }, lfo.default_capabilities()))
     end)
 
     it("reflects operations disabled in the config", function()
@@ -48,8 +48,8 @@ describe("lsp-file-operations", function()
         },
       })
       local caps = lfo.default_capabilities()
-      assert.is_false(caps.workspace.fileOperations.willRename)
-      assert.is_true(caps.workspace.fileOperations.didCreate)
+      assert(caps.workspace.fileOperations.willRename == false)
+      assert(caps.workspace.fileOperations.didCreate == true)
     end)
   end)
 end)

@@ -58,15 +58,15 @@ describe("Util.get_nested_path", function()
   end)
 
   it("resolves a deep path", function()
-    assert.are.equal("value", Util.get_nested_path(t, { "a", "b", "c" }))
+    assert("value" == Util.get_nested_path(t, { "a", "b", "c" }))
   end)
 
   it("returns the table itself for empty keys", function()
-    assert.are.same(t, Util.get_nested_path(t, {}))
+    assert(vim.deep_equal(t, Util.get_nested_path(t, {})))
   end)
 
   it("returns nil for a missing key", function()
-    assert.is_nil(Util.get_nested_path(t, { "a", "x", "c" }))
+    assert(Util.get_nested_path(t, { "a", "x", "c" }) == nil)
   end)
 end)
 
@@ -102,7 +102,7 @@ describe("Util.matches_filters", function()
     )
     assert(uv.fs_write(fd, { "" }), ("Unable to write to `%s`"):format(file))
     assert(uv.fs_close(fd), ("Unable to close file descriptor for `%s`"):format(file))
-    assert.is_true(Util.matches_filters({ { pattern = { glob = "**/*.lua" } } }, file))
+    assert(Util.matches_filters({ { pattern = { glob = "**/*.lua" } } }, file) == true)
   end)
 
   it("does not match a non-matching glob", function()
@@ -113,12 +113,12 @@ describe("Util.matches_filters", function()
     )
     assert(uv.fs_write(fd, { "" }), ("Unable to write to `%s`"):format(file))
     assert(uv.fs_close(fd), ("Unable to close file descriptor for `%s`"):format(file))
-    assert.is_falsy(Util.matches_filters({ { pattern = { glob = "**/*.py" } } }, file))
+    assert(Util.matches_filters({ { pattern = { glob = "**/*.py" } } }, file) == false)
   end)
 
   it("respects matches = 'file' (excludes directories)", function()
-    assert.is_falsy(
-      Util.matches_filters({ { pattern = { glob = "**/*", matches = "file" } } }, tmpdir)
+    assert(
+      Util.matches_filters({ { pattern = { glob = "**/*", matches = "file" } } }, tmpdir) == false
     )
   end)
 
@@ -130,8 +130,8 @@ describe("Util.matches_filters", function()
     )
     assert(uv.fs_write(fd, { "" }), ("Unable to write to `%s`"):format(file))
     assert(uv.fs_close(fd), ("Unable to close file descriptor for `%s`"):format(file))
-    assert.is_falsy(
-      Util.matches_filters({ { pattern = { glob = "**/*", matches = "folder" } } }, file)
+    assert(
+      Util.matches_filters({ { pattern = { glob = "**/*", matches = "folder" } } }, file) == false
     )
   end)
 
@@ -143,16 +143,16 @@ describe("Util.matches_filters", function()
     )
     assert(uv.fs_write(fd, { "" }), ("Unable to write to `%s`"):format(file))
     assert(uv.fs_close(fd), ("Unable to close file descriptor for `%s`"):format(file))
-    assert.is_true(
+    assert(
       Util.matches_filters(
         { { pattern = { glob = "**/*.lua", options = { ignoreCase = true } } } },
         file
-      )
+      ) == true
     )
   end)
 
   it("returns falsy for an empty filter list", function()
-    assert.is_falsy(Util.matches_filters({}, tmpdir))
+    assert(Util.matches_filters({}, tmpdir) == false)
   end)
 
   it("matches if ANY filter matches (OR semantics)", function()
@@ -163,10 +163,10 @@ describe("Util.matches_filters", function()
     )
     assert(uv.fs_write(fd, { "" }), ("Unable to write to `%s`"):format(file))
     assert(uv.fs_close(fd), ("Unable to close file descriptor for `%s`"):format(file))
-    assert.is_true(Util.matches_filters({
+    assert(Util.matches_filters({
       { pattern = { glob = "**/*.py" } },
       { pattern = { glob = "**/*.lua" } },
-    }, file))
+    }, file) == true)
   end)
 
   it("matches directory globs like '**/' against folders only", function()
@@ -179,8 +179,8 @@ describe("Util.matches_filters", function()
     assert(uv.fs_close(fd), ("Unable to close file descriptor for `%s`"):format(file))
 
     local filters = { { pattern = { glob = "**/" } } }
-    assert.is_true(Util.matches_filters(filters, tmpdir))
-    assert.is_falsy(Util.matches_filters(filters, file))
+    assert(Util.matches_filters(filters, tmpdir) == true)
+    assert(Util.matches_filters(filters, file) == false)
   end)
 
   it("restores the global ignorecase option after matching", function()
@@ -195,7 +195,7 @@ describe("Util.matches_filters", function()
     assert(uv.fs_close(fd), ("Unable to close file descriptor for `%s`"):format(file))
 
     Util.matches_filters({ { pattern = { glob = "**/*.lua" } } }, file)
-    assert.is_true(vim.o.ignorecase)
+    assert(vim.o.ignorecase == true)
     vim.o.ignorecase = false
   end)
 end)
