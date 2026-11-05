@@ -1,6 +1,15 @@
 local assert = require("luassert") --[[@as Luassert]]
 local uv = vim.uv or vim.loop
 
+---@param path string
+local function mkdir(path)
+  if vim.fn.has("nvim-0.13") == 1 then
+    vim.fs.mkdir(path, { parents = true, mode = tonumber("755", 8) })
+  else
+    vim.fn.mkdir(path, "p")
+  end
+end
+
 describe("Log.setup", function()
   local cache_dir ---@type string
   local logfile ---@type string
@@ -10,8 +19,8 @@ describe("Log.setup", function()
 
   before_each(function()
     cache_dir = vim.fn.tempname()
-    vim.fn.mkdir(cache_dir, "p")
-    logfile = vim.fs.joinpath(cache_dir, "lsp-file-operations.log")
+    logfile = vim.fs.joinpath(cache_dir, "lsp-file-operations", "log")
+    -- mkdir(cache_dir)
 
     vim.fn.stdpath = function(what) ---@diagnostic disable-line:duplicate-set-field
       return what == "cache" and cache_dir or orig_stdpath(what)

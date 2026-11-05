@@ -239,13 +239,24 @@ M.warn = gen_log_func("warn")
 ---@param logfile string
 ---@overload fun()
 function M.setup(logfile)
-  require("lsp-file-operations.util").validate({ logfile = { logfile, { "string", "nil" }, true } })
+  local Util = require("lsp-file-operations.util")
+  Util.validate({ logfile = { logfile, { "string", "nil" }, true } })
+
+  OUTPUT = (logfile and logfile ~= "") and logfile or OUTPUT
+
+  local parent = Util.strip_slash(OUTPUT, ":h")
+  if Util.vim_has("nvim-0.13") then
+    vim.fs.mkdir(parent, { parents = true, mode = Util.fmode("755") })
+  else
+    assert(
+      vim.fn.mkdir(parent, "p") == 1,
+      ("Unable to create parent directories for log file: `%s`"):format(parent)
+    )
+  end
 
   if not timer then
-    OUTPUT = (logfile and logfile ~= "") and logfile or OUTPUT
-
     timer = assert(uv.new_timer(), "Unable to create new timer")
-    assert(timer:start(30000, 30000, timer_cb), "Unable to start timer")
+    timer:start(30000, 30000, timer_cb)
 
     vim.api.nvim_create_autocmd("VimLeavePre", {
       group = vim.api.nvim_create_augroup("LFOTimer", { clear = true }),
